@@ -1,31 +1,45 @@
-# 🍔 Food Delivery Customer App
+# 🍔 Food Delivery Customer App (Flutter + Django REST API)
 
-A full-featured Flutter mobile application for food delivery customers. Users can browse restaurants, view menus, place orders, track deliveries in real-time, and manage their profiles.
+A cross-platform mobile application for food delivery customers built with Flutter. It connects to a Django backend with PostgreSQL database and is hosted on AWS. Customers can browse restaurants, view menus, place orders, and track delivery status.
 
-## 📱 Features
+---
 
-- 🔍 Browse restaurants and menus
-- 🛒 Add food items to cart and place orders
-- 📍 Real-time order tracking and delivery status
-- 💳 Checkout with multiple payment methods
-- 👤 Profile management and order history
-- 🔐 Secure login/register with Firebase Authentication
+## 🚀 Features
+
+- 📱 Beautiful and responsive UI built with Flutter
+- 🔍 Browse restaurants and view available menus
+- 🛒 Add items to cart and place orders
+- 📦 Track order delivery in real-time
+- 🔐 User registration and authentication via Django API
+- 🧾 Order history and profile management
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Flutter** – Cross-platform UI development
-- **Firebase** – Authentication, Firestore, and real-time database
-- **Google Maps API** – Location and route tracking
-- **Provider** – State management
+### Frontend:
+- **Flutter** – UI and business logic
+- **GetX** – State management (whichever you're using)
+- **http** – API requests
 
-## 🚀 Getting Started
+### Backend:
+- **Django** – REST API built with Django Rest Framework (DRF)
+- **PostgreSQL** – Relational database
+- **AWS** – Backend hosting (EC2/S3/RDS)
 
-1. **Clone the repo**  
-   ```bash
-   git clone https://github.com/gracecleaners/food-delivery-customer-app.git
-   cd food-delivery-customer-app
+---
 
-   flutter pub get
+## 🔧 Setup Instructions
 
-   flutter run
+### Prerequisites
+- Flutter SDK
+- Android Studio or VSCode
+- Django backend already hosted on AWS
 
+### Steps
+
+1. **Clone this repository**
+
+```bash
+git clone https://github.com/your-username/food_delivery_customer_app.git
+cd food_delivery_customer_app
