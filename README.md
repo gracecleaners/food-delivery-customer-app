@@ -27,3 +27,5 @@ A full-featured Flutter mobile application for food delivery customers. Users ca
 
    flutter pub get
 
+   flutter run
+
