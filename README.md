@@ -41,5 +41,5 @@ A cross-platform mobile application for food delivery customers built with Flutt
 1. **Clone this repository**
 
 ```bash
-git clone https://github.com/your-username/food_delivery_customer_app.git
-cd food_delivery_customer_app
+git clone https://github.com/gracecleaners/food-delivery-customer-app.git
+cd food-delivery-customer-app
