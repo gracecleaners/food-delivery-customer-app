@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
-import 'package:food_delivery_customer/views/auth/login.dart';
+import 'package:food_delivery_customer/views/screens/get_started.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,7 +19,7 @@ class _SplashScreenState extends State<SplashScreen> {
   void triggerNewScreen() async {
     await Future.delayed(Duration(seconds: 4));
     Navigator.push(
-        context, MaterialPageRoute(builder: (context) => LoginScreen()));
+        context, MaterialPageRoute(builder: (context) => GetStarted()));
   }
 
   @override
