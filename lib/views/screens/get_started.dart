@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
+import 'package:food_delivery_customer/views/auth/login.dart';
+import 'package:food_delivery_customer/views/widgets/round_button.dart';
 import 'package:food_delivery_customer/views/widgets/text_widget.dart';
 
 class GetStarted extends StatefulWidget {
@@ -10,6 +13,12 @@ class GetStarted extends StatefulWidget {
 }
 
 class _GetStartedState extends State<GetStarted> {
+  @override
+  void initState() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack);
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     var media = MediaQuery.of(context).size;
@@ -52,20 +61,49 @@ class _GetStartedState extends State<GetStarted> {
             children: [
               Image.asset(
                 "assets/logo.png",
-                height: media.height * 0.1,
+                height: media.height * 0.15,
                 width: media.width,
+              ),
+              SizedBox(
+                height: 10,
               ),
               Text(
                 "Welcome",
                 style: TextStyle(fontSize: 40, color: Colors.white),
               ),
-              ElevatedButton(
-                  onPressed: () {},
-                  child: Text(
-                    "Get Started",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(backgroundColor: TColor.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),)
+              SizedBox(
+                height: 10,
+              ),
+              Text(
+                "Your Favorite Food, Delivered Fast!",
+                style: TextStyle(color: Colors.white.withOpacity(0.8)),
+              ),
+              SizedBox(
+                height: 10,
+              ),
+              SizedBox(
+                width: media.width * 0.9,
+                height: media.height*0.06,
+                child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green, // green background
+                foregroundColor: Colors.white, // white text
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                            ),
+                            onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                );
+                            },
+                            child: const Text(
+                "Get Started",
+                style: TextStyle(fontSize: 18),
+                            ),
+                          ),
+              ),
             ],
           ),
         ),
