@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
+import 'package:food_delivery_customer/views/auth/login.dart';
 import 'package:food_delivery_customer/views/auth/verify_sms.dart';
+import 'package:get/get.dart';
 
 class PhoneVerificationWaPage extends StatefulWidget {
   const PhoneVerificationWaPage({super.key});
 
   @override
-  _PhoneVerificationWaPageState createState() => _PhoneVerificationWaPageState();
+  _PhoneVerificationWaPageState createState() =>
+      _PhoneVerificationWaPageState();
 }
 
 class _PhoneVerificationWaPageState extends State<PhoneVerificationWaPage> {
@@ -105,21 +108,24 @@ class _PhoneVerificationWaPageState extends State<PhoneVerificationWaPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: media.height*0.08),
+            SizedBox(height: media.height * 0.08),
 
             GestureDetector(
-              onTap: () {},
+              onTap: () {
+                Get.to(LoginScreen());
+              },
               child: Icon(Icons.arrow_back_ios),
             ),
             SizedBox(
-              height: media.height*0.04,
+              height: media.height * 0.04,
             ),
             Icon(
               FontAwesomeIcons.whatsapp,
-              color: TColor.primary,size: media.width*0.1,
+              color: TColor.primary,
+              size: media.width * 0.1,
             ),
-           SizedBox(
-              height: media.height*0.03,
+            SizedBox(
+              height: media.height * 0.03,
             ),
             const Text(
               'Enter Verification Code',
@@ -142,7 +148,7 @@ class _PhoneVerificationWaPageState extends State<PhoneVerificationWaPage> {
               ),
             ),
             SizedBox(
-              height: media.height*0.05,
+              height: media.height * 0.05,
             ),
             // Code input boxes
             Row(
@@ -191,7 +197,7 @@ class _PhoneVerificationWaPageState extends State<PhoneVerificationWaPage> {
             ),
 
             SizedBox(
-              height: media.height*0.04,
+              height: media.height * 0.04,
             ),
             SizedBox(
               width: double.infinity,
@@ -223,7 +229,7 @@ class _PhoneVerificationWaPageState extends State<PhoneVerificationWaPage> {
               ),
             ),
             SizedBox(
-              height: media.height*0.03,
+              height: media.height * 0.03,
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -239,7 +245,7 @@ class _PhoneVerificationWaPageState extends State<PhoneVerificationWaPage> {
                   ),
                 ),
                 TextButton(
-                  onPressed: (){
+                  onPressed: () {
                     Navigator.push(
                         context,
                         MaterialPageRoute(

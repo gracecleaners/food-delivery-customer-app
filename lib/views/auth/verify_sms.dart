@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
+import 'package:food_delivery_customer/views/auth/login.dart';
 import 'package:food_delivery_customer/views/auth/verify_wa.dart';
+import 'package:get/get.dart';
 
 class PhoneVerificationSMSPage extends StatefulWidget {
   const PhoneVerificationSMSPage({super.key});
@@ -109,7 +111,9 @@ class _PhoneVerificationSMSPageState extends State<PhoneVerificationSMSPage> {
             SizedBox(height: media.height * 0.08),
 
             GestureDetector(
-              onTap: () {},
+              onTap: () {
+                Get.to(LoginScreen());
+              },
               child: Icon(Icons.arrow_back_ios),
             ),
             SizedBox(
