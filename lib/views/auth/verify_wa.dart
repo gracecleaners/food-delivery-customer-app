@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
 import 'package:food_delivery_customer/views/auth/login.dart';
 import 'package:food_delivery_customer/views/auth/verify_sms.dart';
+import 'package:food_delivery_customer/views/screens/main_tab/main_tab_view.dart';
 import 'package:get/get.dart';
 
 class PhoneVerificationWaPage extends StatefulWidget {
@@ -207,16 +208,17 @@ class _PhoneVerificationWaPageState extends State<PhoneVerificationWaPage> {
                   style: TextStyle(fontSize: 18),
                 ),
                 onPressed: () {
-                  if (_controllers
-                      .every((controller) => controller.text.isNotEmpty)) {
-                    _verifyCode();
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please enter the complete code'),
-                      ),
-                    );
-                  }
+                  // if (_controllers
+                  //     .every((controller) => controller.text.isNotEmpty)) {
+                  //   _verifyCode();
+                  // } else {
+                  //   ScaffoldMessenger.of(context).showSnackBar(
+                  //     const SnackBar(
+                  //       content: Text('Please enter the complete code'),
+                  //     ),
+                  //   );
+                  // }
+                  Get.to(MainTabView());
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: TColor.primary,
