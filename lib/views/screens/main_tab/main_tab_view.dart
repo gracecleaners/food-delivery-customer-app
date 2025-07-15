@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
 import 'package:food_delivery_customer/views/screens/cart.dart';
-import 'package:food_delivery_customer/views/screens/homescreen.dart';
+import 'package:food_delivery_customer/views/screens/Home_view/homescreen.dart';
 
 class MainTabView extends StatefulWidget {
   const MainTabView({super.key});
