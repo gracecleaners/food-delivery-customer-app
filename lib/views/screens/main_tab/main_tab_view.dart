@@ -35,49 +35,61 @@ class _MainTabViewState extends State<MainTabView>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: TabBarView(controller: controller, children: [
         HomePage(),
         CartPage(),
         Container(),
         Container(),
       ]),
-      bottomNavigationBar: BottomAppBar(
-        child: TabBar(
-            controller: controller,
-            indicatorColor: Colors.transparent,
-            indicatorWeight: 1,
-            labelColor: TColor.primary,
-            labelStyle: TextStyle(
-                color: TColor.primary,
-                fontSize: 12,
-                fontWeight: FontWeight.bold),
-            unselectedLabelColor: TColor.primaryText.withOpacity(0.6),
-            unselectedLabelStyle: TextStyle(
-                color: TColor.primaryText,
-                fontSize: 10,
-                fontWeight: FontWeight.w200),
-            tabs: [
-              Tab(
-                text: 'Shop',
-                // icon: FaIcon(FontAwesomeIcons.store,),
-                icon: Icon(Icons.store),
-              ),
-              Tab(
-                text: 'Cart',
-                // icon: FaIcon(FontAwesomeIcons.cartShopping),
-                icon: Icon(Icons.shopping_cart),
-              ),
-              Tab(
-                text: 'Favorite',
-                // icon: FaIcon(FontAwesomeIcons.heart),
-                icon: Icon(Icons.favorite),
-              ),
-              Tab(
-                text: 'Account',
-                // icon: FaIcon(FontAwesomeIcons.user),
-                icon: Icon(Icons.person),
-              ),
-            ]),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(15), topRight: Radius.circular(15)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 3,
+                    offset: Offset(0, -2)
+                  )
+                ]),
+        child: BottomAppBar(
+          color: Colors.transparent,
+          elevation: 0,
+          child: TabBar(
+              controller: controller,
+              indicatorColor: Colors.transparent,
+              indicatorWeight: 1,
+              labelColor: TColor.primary,
+              labelStyle: TextStyle(
+                  color: TColor.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold),
+              unselectedLabelColor: TColor.primaryText.withOpacity(0.6),
+              unselectedLabelStyle: TextStyle(
+                  color: TColor.primaryText,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w200),
+              tabs: [
+                Tab(
+                  text: 'Shop',
+                  icon: Icon(Icons.store),
+                ),
+                Tab(
+                  text: 'Cart',
+                  icon: Icon(Icons.shopping_cart),
+                ),
+                Tab(
+                  text: 'Favorite',
+                  icon: Icon(Icons.favorite),
+                ),
+                Tab(
+                  text: 'Account',
+                  icon: Icon(Icons.person),
+                ),
+              ]),
+        ),
       ),
     );
   }
