@@ -86,8 +86,8 @@ class _GetStartedState extends State<GetStarted> {
                 height: media.height*0.06,
                 child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green, // green background
-                foregroundColor: Colors.white, // white text
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white, 
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),

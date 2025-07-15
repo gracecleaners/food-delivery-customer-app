@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
+import 'package:food_delivery_customer/views/auth/verify_wa.dart';
 import 'package:food_delivery_customer/views/widgets/round_button.dart';
 
 class LoginScreen extends StatelessWidget {
@@ -97,13 +98,26 @@ class LoginScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                SizedBox(height: 10,),
-               Padding(
-                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                 child: Align(
-                  alignment: Alignment.bottomRight,
-                  child: TextButton(onPressed: (){}, child: Text("Get Code", style: TextStyle(color: TColor.primary),))),
-               ),
+                SizedBox(
+                  height: 10,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        PhoneVerificationWaPage()));
+                          },
+                          child: Text(
+                            "Get Code",
+                            style: TextStyle(color: TColor.primary),
+                          ))),
+                ),
                 Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Row(
@@ -117,9 +131,7 @@ class LoginScreen extends StatelessWidget {
                       ),
                       Text(
                         "Start with socials",
-                        style: TextStyle(
-                          color: Colors.black.withOpacity(0.7)
-                        ),
+                        style: TextStyle(color: Colors.black.withOpacity(0.7)),
                       ),
                       const Expanded(
                         child: Divider(
