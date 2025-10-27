@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
+import 'package:food_delivery_customer/views/screens/special_offer_page.dart';
 
 class SpecialOffersWidget extends StatelessWidget {
   const SpecialOffersWidget({super.key});
@@ -50,7 +51,14 @@ class SpecialOffersWidget extends StatelessWidget {
               ),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const SpecialOffersPage(),
+    ),
+  );
+              },
               child: Text(
                 "See all",
                 style: TextStyle(

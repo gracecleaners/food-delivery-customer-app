@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
+import 'package:food_delivery_customer/controller/user_controller.dart';
 import 'package:food_delivery_customer/views/screens/Home_view/categories.dart';
 import 'package:food_delivery_customer/views/screens/Home_view/popular_restaurants.dart';
 import 'package:food_delivery_customer/views/screens/Home_view/promo.dart';
 import 'package:food_delivery_customer/views/screens/Home_view/special_offers.dart';
+import 'package:food_delivery_customer/views/screens/get_started.dart';
+import 'package:get/get.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,6 +19,8 @@ class _HomePageState extends State<HomePage> {
   final FocusNode _focusNode = FocusNode();
   final TextEditingController _controller = TextEditingController();
   bool _isFocused = false;
+  final UserController _userController =
+      Get.find<UserController>(); // Get user controller
 
   @override
   void initState() {
@@ -40,9 +45,78 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildLocationHeader() {
-    return Row(
+    return Column(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        Obx(() {
+          final user = _userController.user;
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (user != null) ...[
+                Text(
+                  'Hi, ${user.username}', // Show first name only
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: TColor.primaryText,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              GestureDetector(
+                onTap: () {
+                  Get.bottomSheet(Container(
+                    color: Colors.white,
+                    child: Wrap(
+                      children: <Widget>[
+                        ListTile(
+                          leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: TColor.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(Icons.person)),
+                          title: Text('Profile'),
+                          onTap: () {},
+                        ),
+                        ListTile(
+                          leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(Icons.logout)),
+                          title: Text('Logout'),
+                          onTap: () {
+                            _showLogoutDialog();
+                          },
+                        )
+                      ],
+                    ),
+                  ));
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: TColor.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.person,
+                    color: TColor.primary,
+                    size: 25,
+                  ),
+                ),
+              ),
+            ],
+          );
+        }),
+        SizedBox(
+          height: 20,
+        ),
         Row(
           children: [
             Container(
@@ -75,14 +149,55 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Icon(Icons.keyboard_arrow_down, color: TColor.primary, size: 18),
+                    Icon(Icons.keyboard_arrow_down,
+                        color: TColor.primary, size: 18),
                   ],
                 ),
               ],
             ),
           ],
         ),
+
+        // User Profile Avatar with name
       ],
+    );
+  }
+
+  void _showLogoutDialog() {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              // Clear user data
+              _userController.clearUser();
+
+              // Navigate to get started screen
+              Get.to(GetStarted());
+
+              // Show success message
+              Get.snackbar(
+                'Success',
+                'Logged out successfully',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.green,
+                colorText: Colors.white,
+              );
+            },
+            child: Text(
+              'Logout',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -107,7 +222,8 @@ class _HomePageState extends State<HomePage> {
             ),
             child: GestureDetector(
               onTap: _unfocusSearch,
-              child: Icon(Icons.arrow_back_ios, color: TColor.primary, size: 18),
+              child:
+                  Icon(Icons.arrow_back_ios, color: TColor.primary, size: 18),
             ),
           ),
         Expanded(
@@ -174,16 +290,16 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: media.height * 0.03),
-              
+
               // Location and Profile with enhanced styling
               _buildLocationHeader(),
-              
+
               const SizedBox(height: 28),
 
               // Enhanced Search Bar
               _buildSearchBar(),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
               // Categories Widget
               const CategoriesWidget(),
@@ -196,7 +312,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 32),
 
               // Popular Restaurants Widget
-              const PopularRestaurantsWidget(),
+              PopularRestaurantsWidget(),
 
               const SizedBox(height: 32),
 

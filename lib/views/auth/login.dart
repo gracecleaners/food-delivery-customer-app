@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
+import 'package:food_delivery_customer/controller/email_auth_controller.dart';
+import 'package:food_delivery_customer/controller/user_controller.dart';
 import 'package:food_delivery_customer/views/auth/verify_wa.dart';
 import 'package:food_delivery_customer/views/widgets/round_button.dart';
+import 'package:get/get.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -160,7 +163,10 @@ class LoginScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: RoundButton(
                     title: "Start with Email",
-                    onPressed: () {},
+                    onPressed: () {
+                      Get.put(UserController());
+                      Get.toNamed('/email_login_screen');
+                    },
                     bgcolor: TColor.primary,
                     color1: TColor.primary,
                     icon: Icons.email,

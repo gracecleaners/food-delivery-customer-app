@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:food_delivery_customer/constants/colors.dart';
 import 'package:food_delivery_customer/views/auth/login.dart';
-import 'package:food_delivery_customer/views/widgets/round_button.dart';
-import 'package:food_delivery_customer/views/widgets/text_widget.dart';
 
 class GetStarted extends StatefulWidget {
   const GetStarted({super.key});

@@ -203,10 +203,6 @@ class _PhoneVerificationSMSPageState extends State<PhoneVerificationSMSPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                child: Text(
-                  'Verify',
-                  style: TextStyle(fontSize: 18),
-                ),
                 onPressed: () {
                   // if (_controllers
                   //     .every((controller) => controller.text.isNotEmpty)) {
@@ -228,6 +224,10 @@ class _PhoneVerificationSMSPageState extends State<PhoneVerificationSMSPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
+                ),
+                child: Text(
+                  'Verify',
+                  style: TextStyle(fontSize: 18),
                 ),
               ),
             ),

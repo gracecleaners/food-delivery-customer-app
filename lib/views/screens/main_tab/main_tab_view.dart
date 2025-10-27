@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
+import 'package:food_delivery_customer/views/screens/account.dart';
 import 'package:food_delivery_customer/views/screens/cart.dart';
 import 'package:food_delivery_customer/views/screens/Home_view/homescreen.dart';
+import 'package:food_delivery_customer/views/screens/favorite.dart';
 
 class MainTabView extends StatefulWidget {
   const MainTabView({super.key});
@@ -39,8 +40,8 @@ class _MainTabViewState extends State<MainTabView>
       body: TabBarView(controller: controller, children: [
         HomePage(),
         CartPage(),
-        Container(),
-        Container(),
+        FavoritesPage(),
+        AccountPage(),
       ]),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

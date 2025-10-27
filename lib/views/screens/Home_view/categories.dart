@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
+import 'package:food_delivery_customer/views/screens/category_page.dart';
 
 class CategoriesWidget extends StatefulWidget {
   const CategoriesWidget({super.key});
@@ -47,6 +48,14 @@ class _CategoriesWidgetState extends State<CategoriesWidget> {
                   setState(() {
                     _selectedCategory = index;
                   });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CategoryPage(
+                        categoryName: categories[index]['name'],
+                      ),
+                    ),
+                  );
                 },
                 child: Container(
                   width: 85,
