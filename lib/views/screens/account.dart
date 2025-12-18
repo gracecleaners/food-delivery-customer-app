@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
+import 'package:food_delivery_customer/controller/user_controller.dart';
+import 'package:food_delivery_customer/views/screens/edit_profile.dart';
 
-class AccountPage extends StatelessWidget {
-  const AccountPage({super.key});
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    var media = MediaQuery.of(context).size;
-    
+    final UserController userController = Get.find<UserController>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
@@ -16,56 +19,19 @@ class AccountPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header with Profile
-              _buildProfileHeader(media),
+              // Profile header
+              Obx(() => _buildProfileHeader(userController)),
+
               const SizedBox(height: 30),
-              
-              // Account Sections
-              _buildSectionTitle('Account Settings'),
-              _buildAccountCard(context),
-              const SizedBox(height: 20),
-              
-              _buildSectionTitle('Preferences'),
-              _buildPreferencesCard(context),
-              const SizedBox(height: 20),
-              
-              _buildSectionTitle('Support'),
-              _buildSupportCard(context),
+              _buildSectionTitle('Personal Information'),
+              Obx(() => _buildPersonalInfoCard(userController)),
+
               const SizedBox(height: 30),
-              
-              // Logout Button
-              Center(
-                child: SizedBox(
-                  width: media.width * 0.6,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: BorderSide(color: Colors.red[400]!),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () {
-                      // Handle logout
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.logout, color: Colors.red[400], size: 20),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Log Out',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.red[400],
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              _buildSectionTitle('Account Information'),
+              Obx(() => _buildAccountInfoCard(userController)),
+
+              const SizedBox(height: 30),
+              _buildLogoutButton(userController),
               const SizedBox(height: 20),
             ],
           ),
@@ -74,7 +40,62 @@ class AccountPage extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileHeader(Size media) {
+  Widget _buildLogoutButton(UserController userController) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: () => _showLogoutConfirmation(userController),
+          child: const Text(
+            'Logout',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutConfirmation(UserController userController) {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Get.back();
+              userController.logout();
+            },
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader(UserController userController) {
+    final user = userController.userObs.value;
+    if (user == null) return const Center(child: CircularProgressIndicator());
+
     return Center(
       child: Column(
         children: [
@@ -88,17 +109,18 @@ class AccountPage extends StatelessWidget {
                 color: TColor.primary.withOpacity(0.2),
                 width: 2,
               ),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile.jpg'), // Replace with your asset
-                fit: BoxFit.cover,
-              ),
+              color: TColor.primary.withOpacity(0.1),
+            ),
+            child: Icon(
+              Icons.person,
+              size: 50,
+              color: TColor.primary,
             ),
           ),
           const SizedBox(height: 15),
-          
           // User Name
           Text(
-            'John Doe',
+            user.displayName,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -106,36 +128,34 @@ class AccountPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 5),
-          
           // User Email
           Text(
-            'john.doe@example.com',
+            user.email,
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[600],
             ),
           ),
           const SizedBox(height: 15),
-          
           // Edit Profile Button
           SizedBox(
-            width: media.width * 0.4,
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                side: BorderSide(color: TColor.primary),
+            width: 150,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: TColor.primary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
               ),
               onPressed: () {
-                // Handle edit profile
+                Get.to(() => EditProfilePage());
               },
-              child: Text(
+              child: const Text(
                 'Edit Profile',
                 style: TextStyle(
                   fontSize: 14,
-                  color: TColor.primary,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -159,7 +179,10 @@ class AccountPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAccountCard(BuildContext context) {
+  Widget _buildPersonalInfoCard(UserController userController) {
+    final user = userController.userObs.value;
+    if (user == null) return const SizedBox();
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -176,27 +199,30 @@ class AccountPage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildListTile(
-            icon: Icons.payment,
-            title: 'Payment Methods',
+          _buildInfoTile(
+            icon: Icons.person,
+            title: 'Full Name',
+            value: user.fullName,
             onTap: () {
-              // Navigate to payment methods
+              Get.to(() => EditProfilePage(initialField: 'name'));
             },
           ),
           _buildDivider(),
-          _buildListTile(
-            icon: Icons.location_on,
-            title: 'Saved Addresses',
+          _buildInfoTile(
+            icon: Icons.phone,
+            title: 'Phone Number',
+            value: user.phone ?? 'Not set',
             onTap: () {
-              // Navigate to saved addresses
+              Get.to(() => EditProfilePage(initialField: 'phone'));
             },
           ),
           _buildDivider(),
-          _buildListTile(
-            icon: Icons.history,
-            title: 'Order History',
+          _buildInfoTile(
+            icon: Icons.email,
+            title: 'Email Address',
+            value: user.email,
             onTap: () {
-              // Navigate to order history
+              Get.to(() => EditProfilePage(initialField: 'email'));
             },
           ),
         ],
@@ -204,7 +230,10 @@ class AccountPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPreferencesCard(BuildContext context) {
+  Widget _buildAccountInfoCard(UserController userController) {
+    final user = userController.userObs.value;
+    if (user == null) return const SizedBox();
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -221,93 +250,36 @@ class AccountPage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildListTile(
-            icon: Icons.notifications,
-            title: 'Notifications',
-            trailing: Switch(
-              value: true,
-              activeColor: TColor.primary,
-              onChanged: (value) {
-                // Handle notification toggle
-              },
-            ),
+          _buildInfoTile(
+            icon: Icons.badge,
+            title: 'Account Type',
+            value: user.userType.toUpperCase(),
           ),
           _buildDivider(),
-          _buildListTile(
-            icon: Icons.dark_mode,
-            title: 'Dark Mode',
-            trailing: Switch(
-              value: false,
-              activeColor: TColor.primary,
-              onChanged: (value) {
-                // Handle dark mode toggle
-              },
-            ),
+          _buildInfoTile(
+            icon: Icons.verified,
+            title: 'Verification Status',
+            value: user.isVerified ? 'Verified' : 'Not Verified',
+            valueColor: user.isVerified ? Colors.green : Colors.orange,
           ),
           _buildDivider(),
-          _buildListTile(
-            icon: Icons.language,
-            title: 'Language',
-            subtitle: 'English',
-            onTap: () {
-              // Navigate to language selection
-            },
+          _buildInfoTile(
+            icon: Icons.calendar_today,
+            title: 'Member Since',
+            value: user.createdAt != null
+                ? '${user.createdAt!.day}/${user.createdAt!.month}/${user.createdAt!.year}'
+                : 'Unknown',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSupportCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildListTile(
-            icon: Icons.help,
-            title: 'Help Center',
-            onTap: () {
-              // Navigate to help center
-            },
-          ),
-          _buildDivider(),
-          _buildListTile(
-            icon: Icons.support_agent,
-            title: 'Contact Support',
-            onTap: () {
-              // Navigate to contact support
-            },
-          ),
-          _buildDivider(),
-          _buildListTile(
-            icon: Icons.privacy_tip,
-            title: 'Privacy Policy',
-            onTap: () {
-              // Navigate to privacy policy
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildListTile({
+  Widget _buildInfoTile({
     required IconData icon,
     required String title,
-    String? subtitle,
-    Widget? trailing,
+    required String value,
+    Color? valueColor,
     VoidCallback? onTap,
   }) {
     return ListTile(
@@ -323,21 +295,24 @@ class AccountPage extends StatelessWidget {
       title: Text(
         title,
         style: TextStyle(
-          fontSize: 16,
+          fontSize: 14,
           fontWeight: FontWeight.w500,
-          color: TColor.primaryText,
-        ),
-      ),
-      subtitle: subtitle != null ? Text(
-        subtitle,
-        style: TextStyle(
-          fontSize: 12,
           color: Colors.grey[600],
         ),
-      ) : null,
-      trailing: trailing ?? Icon(Icons.chevron_right, color: Colors.grey[400]),
+      ),
+      subtitle: Text(
+        value,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: valueColor ?? TColor.primaryText,
+        ),
+      ),
+      trailing: onTap != null
+          ? Icon(Icons.edit, color: TColor.primary, size: 20)
+          : null,
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       minLeadingWidth: 10,
     );
   }
