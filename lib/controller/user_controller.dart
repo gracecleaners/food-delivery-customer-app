@@ -59,78 +59,127 @@ class UserController extends GetxController {
   }
 
   Future<void> signInWithGoogle() async {
-    try {
-      isLoading.value = true;
-      error.value = '';
+  try {
+    isLoading.value = true;
+    error.value = '';
 
-      print('🔐 Starting Google authentication process...');
+    print('🔐 Starting Google authentication process...');
 
-      Map<String, dynamic>? googleAuthData;
-      int retryCount = 0;
-      const maxRetries = 2;
+    Map<String, dynamic>? googleAuthData;
+    int retryCount = 0;
+    const maxRetries = 2;
 
-      while (retryCount < maxRetries) {
-        try {
-          googleAuthData = await _googleSignInService.signIn();
-          if (googleAuthData != null) break;
-          
-          retryCount++;
-          if (retryCount < maxRetries) {
-            print('🔄 Retrying Google Sign-In (attempt ${retryCount + 1}/$maxRetries)...');
-            await Future.delayed(const Duration(seconds: 1));
-          }
-        } catch (e) {
-          retryCount++;
-          if (retryCount >= maxRetries) rethrow;
-          print('🔄 Retrying after error (attempt ${retryCount + 1}/$maxRetries)...');
+    while (retryCount < maxRetries) {
+      try {
+        googleAuthData = await _googleSignInService.signIn();
+        if (googleAuthData != null) break;
+        
+        retryCount++;
+        if (retryCount < maxRetries) {
+          print('🔄 Retrying Google Sign-In (attempt ${retryCount + 1}/$maxRetries)...');
           await Future.delayed(const Duration(seconds: 1));
         }
-      }
-
-      if (googleAuthData == null) {
-        throw Exception('Google Sign-In was cancelled or failed after $maxRetries attempts');
-      }
-
-      print('✅ Google authentication successful, sending to backend...');
-
-      final response = await _apiService.postPublic(
-        'users/auth/google/', 
-        googleAuthData
-      ).timeout(const Duration(seconds: 30), onTimeout: () {
-        throw TimeoutException('Server connection timed out. Please try again.');
-      });
-
-      print('✅ Backend Google authentication response received');
-
-      await _handleGoogleAuthResponse(response, googleAuthData);
-
-    } on TimeoutException catch (e) {
-      error.value = 'Connection timeout. Please check your internet and try again.';
-      print('❌ Google Sign-In timeout: $e');
-    } on SocketException catch (e) {
-      error.value = 'Network error. Please check your internet connection.';
-      print('❌ Google Sign-In network error: $e');
-    } on PlatformException catch (e) {
-      error.value = _getGoogleSignInError(e);
-      print('❌ Google Sign-In PlatformException: $e');
-    } catch (e) {
-      error.value = _getGoogleSignInError(e);
-      print('❌ Google Sign-In error: $e');
-    } finally {
-      isLoading.value = false;
-      
-      if (error.value.isNotEmpty) {
-        Get.snackbar(
-          'Google Sign-In Failed',
-          error.value,
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 5),
-        );
+      } catch (e) {
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          _showSafeSnackbar(
+            'Google Sign-In Error',
+            _getGoogleSignInError(e),
+          );
+          return;
+        }
+        print('🔄 Retrying after error (attempt ${retryCount + 1}/$maxRetries)...');
+        await Future.delayed(const Duration(seconds: 1));
       }
     }
+
+    if (googleAuthData == null) {
+      _showSafeSnackbar(
+        'Google Sign-In Cancelled',
+        'Sign-In was cancelled or failed after $maxRetries attempts',
+      );
+      return;
+    }
+
+    print('✅ Google authentication successful, sending to backend...');
+
+    final response = await _apiService.postPublic(
+      'users/auth/google/', 
+      googleAuthData
+    ).timeout(const Duration(seconds: 30), onTimeout: () {
+      throw TimeoutException('Server connection timed out. Please try again.');
+    });
+
+    print('✅ Backend Google authentication response received');
+
+    await _handleGoogleAuthResponse(response, googleAuthData);
+
+  } on TimeoutException catch (e) {
+    error.value = 'Connection timeout. Please check your internet and try again.';
+    print('❌ Google Sign-In timeout: $e');
+    _showSafeSnackbar('Connection Timeout', error.value);
+  } on SocketException catch (e) {
+    error.value = 'Network error. Please check your internet connection.';
+    print('❌ Google Sign-In network error: $e');
+    _showSafeSnackbar('Network Error', error.value);
+  } on PlatformException catch (e) {
+    error.value = _getGoogleSignInError(e);
+    print('❌ Google Sign-In PlatformException: $e');
+    _showSafeSnackbar('Google Sign-In Failed', error.value);
+  } catch (e) {
+    error.value = _getGoogleSignInError(e);
+    print('❌ Google Sign-In error: $e');
+    _showSafeSnackbar('Google Sign-In Failed', error.value);
+  } finally {
+    isLoading.value = false;
   }
+}
+
+// Safe snackbar helper methods
+void _showSafeSnackbar(String title, String message) {
+  // Use SchedulerBinding instead of WidgetsBinding for better timing
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Add a small delay to ensure navigation is complete
+    Future.delayed(const Duration(milliseconds: 100), () {
+      // Check if we're still in a valid context
+      if (Get.isRegistered<UserController>() && Get.context != null) {
+        try {
+          Get.snackbar(
+            title,
+            message,
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 5),
+            margin: const EdgeInsets.all(10),
+            borderRadius: 8,
+          );
+        } catch (e) {
+          debugPrint('Snackbar error: $e - $title: $message');
+        }
+      } else {
+        debugPrint('Context unavailable - $title: $message');
+      }
+    });
+  });
+}
+
+void _showSnackbarWithNavigatorKey(String title, String message) {
+  try {
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 5),
+      margin: const EdgeInsets.all(10),
+      borderRadius: 8,
+    );
+  } catch (e) {
+    debugPrint('Failed to show snackbar even with global key: $e');
+  }
+}
 
   Future<void> _handleAuthResponse(Map<String, dynamic> response) async {
     try {
