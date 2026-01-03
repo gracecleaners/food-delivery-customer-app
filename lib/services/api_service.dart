@@ -272,26 +272,91 @@ Future<bool> refreshToken() async {
   }
 
   // Public POST method (no authentication required)
-  Future<dynamic> postPublic(String endpoint, dynamic data) async {
-    try {
-      _logDebug('API POST (Public): $baseUrl/$endpoint');
-      _logDebug('API Data: $data');
-      
-      final response = await client.post(
-        Uri.parse('$baseUrl/$endpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode(data),
-      ).timeout(const Duration(seconds: 30));
-      
-      return await _handlePublicResponse(response);
-    } catch (e) {
-      _logError('API POST (Public) Error', e);
-      rethrow;
+ Future<dynamic> postPublic(String endpoint, dynamic data) async {
+  try {
+    _logDebug('API POST (Public): $baseUrl/$endpoint');
+    _logDebug('API Data type: ${data.runtimeType}');
+    _logDebug('API Data: $data');
+    
+    // Make sure data is properly encoded
+    String jsonBody;
+    if (data is Map || data is List) {
+      jsonBody = json.encode(data);
+    } else if (data is String) {
+      // If data is already a string, check if it's valid JSON
+      try {
+        json.decode(data); // Validate it's JSON
+        jsonBody = data;
+      } catch (e) {
+        // If not JSON, wrap it as JSON string
+        jsonBody = json.encode({'data': data});
+      }
+    } else {
+      // For other types, convert to JSON
+      jsonBody = json.encode(data);
     }
+    
+    _logDebug('JSON Body being sent: $jsonBody');
+    
+    final response = await client.post(
+      Uri.parse('$baseUrl/$endpoint'),
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept': 'application/json',
+      },
+      body: jsonBody,
+    ).timeout(const Duration(seconds: 30));
+    
+    return await _handlePublicResponse(response);
+  } catch (e) {
+    _logError('API POST (Public) Error', e);
+    rethrow;
   }
+}
+
+
+Future<dynamic> googleAuth(Map<String, dynamic> authData) async {
+  try {
+    final endpoint = 'users/auth/google/';
+    _logDebug('Google Auth: $baseUrl/$endpoint');
+    _logDebug('Auth Data type: ${authData.runtimeType}');
+    _logDebug('Auth Data: $authData');
+    
+    // Create proper request body with user_type
+    final requestBody = {
+      'access_token': authData['access_token']?.toString() ?? '',
+      'id_token': authData['id_token']?.toString() ?? '',
+      'user_type': 'customer', // This is REQUIRED based on earlier error
+    };
+    
+    // Make sure all fields are present
+    if (requestBody['access_token']!.isEmpty || requestBody['id_token']!.isEmpty) {
+      throw Exception('Missing Google authentication tokens');
+    }
+    
+    // Debug the JSON encoding
+    final jsonString = json.encode(requestBody);
+    _logDebug('JSON String to send: $jsonString');
+    _logDebug('JSON String type: ${jsonString.runtimeType}');
+    _logDebug('JSON includes user_type: ${jsonString.contains('user_type')}');
+    
+    final response = await client.post(
+      Uri.parse('$baseUrl/$endpoint'),
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept': 'application/json',
+      },
+      body: jsonString,
+    ).timeout(const Duration(seconds: 30));
+    
+    _logDebug('Response status: ${response.statusCode}');
+    
+    return await _handlePublicResponse(response);
+  } catch (e) {
+    _logError('Google Auth Error', e);
+    rethrow;
+  }
+}
 
   // In ApiService, update all HTTP methods to use the enhanced _sendRequest
 

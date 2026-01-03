@@ -5,7 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 class GoogleSignInService extends GetxService {
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId: '55727848133-6tp3tfrqc9bkjski9mk0v6309egomf6o.apps.googleusercontent.com',
+    serverClientId: '420175212968-lqga32ger8fcfrve7jp99259ljrd0elm.apps.googleusercontent.com',
   );
 
   Future<Map<String, dynamic>?> signIn() async {

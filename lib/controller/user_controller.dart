@@ -103,10 +103,11 @@ class UserController extends GetxController {
 
     print('✅ Google authentication successful, sending to backend...');
 
-    final response = await _apiService.postPublic(
-      'users/auth/google/', 
-      googleAuthData
-    ).timeout(const Duration(seconds: 30), onTimeout: () {
+    // Use the specific googleAuth method or ensure proper format
+    final response = await _apiService.googleAuth({
+      'access_token': googleAuthData['access_token'],
+      'id_token': googleAuthData['id_token'],
+    }).timeout(const Duration(seconds: 30), onTimeout: () {
       throw TimeoutException('Server connection timed out. Please try again.');
     });
 
@@ -134,7 +135,6 @@ class UserController extends GetxController {
     isLoading.value = false;
   }
 }
-
 // Safe snackbar helper methods
 void _showSafeSnackbar(String title, String message) {
   // Use SchedulerBinding instead of WidgetsBinding for better timing
