@@ -319,37 +319,65 @@ Future<dynamic> googleAuth(Map<String, dynamic> authData) async {
   try {
     final endpoint = 'users/auth/google/';
     _logDebug('Google Auth: $baseUrl/$endpoint');
-    _logDebug('Auth Data type: ${authData.runtimeType}');
-    _logDebug('Auth Data: $authData');
     
-    // Create proper request body with user_type
+    // Create request body with REQUIRED fields
     final requestBody = {
       'access_token': authData['access_token']?.toString() ?? '',
-      'id_token': authData['id_token']?.toString() ?? '',
-      'user_type': 'customer', // This is REQUIRED based on earlier error
+      'user_type': authData['user_type'] ?? 'customer',
     };
     
-    // Make sure all fields are present
-    if (requestBody['access_token']!.isEmpty || requestBody['id_token']!.isEmpty) {
-      throw Exception('Missing Google authentication tokens');
+    // Add id_token if present (REQUIRED by backend)
+    if (authData.containsKey('id_token') && authData['id_token'] != null) {
+      requestBody['id_token'] = authData['id_token']!.toString();
     }
     
-    // Debug the JSON encoding
-    final jsonString = json.encode(requestBody);
-    _logDebug('JSON String to send: $jsonString');
-    _logDebug('JSON String type: ${jsonString.runtimeType}');
-    _logDebug('JSON includes user_type: ${jsonString.contains('user_type')}');
+    // Add optional fields for registration
+    if (authData.containsKey('phone') && authData['phone'] != null) {
+      requestBody['phone'] = authData['phone']!.toString();
+    }
+    if (authData.containsKey('username') && authData['username'] != null) {
+      requestBody['username'] = authData['username']!.toString();
+    }
+    if (authData.containsKey('first_name') && authData['first_name'] != null) {
+      requestBody['first_name'] = authData['first_name']!.toString();
+    }
+    if (authData.containsKey('last_name') && authData['last_name'] != null) {
+      requestBody['last_name'] = authData['last_name']!.toString();
+    }
+    if (authData.containsKey('email') && authData['email'] != null) {
+      requestBody['email'] = authData['email']!.toString();
+    }
+    
+    // Restaurant fields
+    if (authData.containsKey('restaurant_name') && authData['restaurant_name'] != null) {
+      requestBody['restaurant_name'] = authData['restaurant_name']!.toString();
+    }
+    if (authData.containsKey('business_license') && authData['business_license'] != null) {
+      requestBody['business_license'] = authData['business_license']!.toString();
+    }
+    if (authData.containsKey('address') && authData['address'] != null) {
+      requestBody['address'] = authData['address']!.toString();
+    }
+    
+    // Driver fields
+    if (authData.containsKey('license_number') && authData['license_number'] != null) {
+      requestBody['license_number'] = authData['license_number']!.toString();
+    }
+    if (authData.containsKey('vehicle_type') && authData['vehicle_type'] != null) {
+      requestBody['vehicle_type'] = authData['vehicle_type']!.toString();
+    }
+    
+    _logDebug('Request Body: $requestBody');
+    _logDebug('Request Body Keys: ${requestBody.keys.toList()}');
     
     final response = await client.post(
       Uri.parse('$baseUrl/$endpoint'),
       headers: {
-        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: jsonString,
+      body: json.encode(requestBody),
     ).timeout(const Duration(seconds: 30));
-    
-    _logDebug('Response status: ${response.statusCode}');
     
     return await _handlePublicResponse(response);
   } catch (e) {
@@ -358,7 +386,6 @@ Future<dynamic> googleAuth(Map<String, dynamic> authData) async {
   }
 }
 
-  // In ApiService, update all HTTP methods to use the enhanced _sendRequest
 
 // GET method
 Future<dynamic> get(String endpoint, {Map<String, String>? params}) async {

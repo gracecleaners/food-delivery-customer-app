@@ -65,54 +65,36 @@ class UserController extends GetxController {
 
     print('🔐 Starting Google authentication process...');
 
-    Map<String, dynamic>? googleAuthData;
-    int retryCount = 0;
-    const maxRetries = 2;
-
-    while (retryCount < maxRetries) {
-      try {
-        googleAuthData = await _googleSignInService.signIn();
-        if (googleAuthData != null) break;
-        
-        retryCount++;
-        if (retryCount < maxRetries) {
-          print('🔄 Retrying Google Sign-In (attempt ${retryCount + 1}/$maxRetries)...');
-          await Future.delayed(const Duration(seconds: 1));
-        }
-      } catch (e) {
-        retryCount++;
-        if (retryCount >= maxRetries) {
-          _showSafeSnackbar(
-            'Google Sign-In Error',
-            _getGoogleSignInError(e),
-          );
-          return;
-        }
-        print('🔄 Retrying after error (attempt ${retryCount + 1}/$maxRetries)...');
-        await Future.delayed(const Duration(seconds: 1));
-      }
-    }
-
+    // Get Google auth data
+    final googleAuthData = await _googleSignInService.signIn();
     if (googleAuthData == null) {
-      _showSafeSnackbar(
-        'Google Sign-In Cancelled',
-        'Sign-In was cancelled or failed after $maxRetries attempts',
-      );
+      _showSafeSnackbar('Sign-In Cancelled', 'Google Sign-In was cancelled');
       return;
     }
 
     print('✅ Google authentication successful, sending to backend...');
 
-    // Use the specific googleAuth method or ensure proper format
-    final response = await _apiService.googleAuth({
+    // Prepare auth data for backend
+    final authDataForBackend = {
       'access_token': googleAuthData['access_token'],
-      'id_token': googleAuthData['id_token'],
-    }).timeout(const Duration(seconds: 30), onTimeout: () {
+      'user_type': 'customer',
+      'email': googleAuthData['email'],
+      'first_name': googleAuthData['first_name'],
+      'last_name': googleAuthData['last_name'],
+      'id_token': googleAuthData['id_token'], // Include if backend needs it
+    };
+
+    print('📤 Sending to backend: ${authDataForBackend.keys}');
+
+    // Call backend Google auth endpoint
+    final response = await _apiService.googleAuth(authDataForBackend)
+        .timeout(const Duration(seconds: 30), onTimeout: () {
       throw TimeoutException('Server connection timed out. Please try again.');
     });
 
     print('✅ Backend Google authentication response received');
 
+    // Handle the response
     await _handleGoogleAuthResponse(response, googleAuthData);
 
   } on TimeoutException catch (e) {
@@ -123,10 +105,6 @@ class UserController extends GetxController {
     error.value = 'Network error. Please check your internet connection.';
     print('❌ Google Sign-In network error: $e');
     _showSafeSnackbar('Network Error', error.value);
-  } on PlatformException catch (e) {
-    error.value = _getGoogleSignInError(e);
-    print('❌ Google Sign-In PlatformException: $e');
-    _showSafeSnackbar('Google Sign-In Failed', error.value);
   } catch (e) {
     error.value = _getGoogleSignInError(e);
     print('❌ Google Sign-In error: $e');
@@ -135,6 +113,7 @@ class UserController extends GetxController {
     isLoading.value = false;
   }
 }
+
 // Safe snackbar helper methods
 void _showSafeSnackbar(String title, String message) {
   // Use SchedulerBinding instead of WidgetsBinding for better timing
@@ -225,64 +204,184 @@ void _showSnackbarWithNavigatorKey(String title, String message) {
     }
   }
 
-  Future<void> _handleGoogleAuthResponse(Map<String, dynamic> response, Map<String, dynamic> googleAuthData) async {
-    try {
-      print('🔄 Processing Google auth response...');
+ Future<void> _handleGoogleAuthResponse(Map<String, dynamic> response, Map<String, dynamic> googleAuthData) async {
+  try {
+    print('🔄 Processing Google auth response...');
+    print('🔍 Response keys: ${response.keys.toList()}');
+    
+    // Check if authentication was successful (has tokens)
+    bool hasTokens = response.containsKey('access_token') || 
+                     response.containsKey('access') ||
+                     response.containsKey('refresh_token') ||
+                     response.containsKey('refresh');
+    
+    // Check if this is a new user needing registration
+    bool needsRegistration = response.containsKey('requires_registration') && 
+                            response['requires_registration'] == true;
+    
+    bool hasError = response.containsKey('detail') || 
+                    response.containsKey('error') || 
+                    response.containsKey('message');
+    
+    print('Analysis - hasTokens: $hasTokens, needsRegistration: $needsRegistration, hasError: $hasError');
 
-      bool hasTokens = response.containsKey('tokens') || 
-                      response.containsKey('access') || 
-                      response.containsKey('access_token');
+    if (hasError) {
+      // Handle error response
+      final errorMessage = response['detail'] ?? 
+                          response['error'] ?? 
+                          response['message'] ?? 
+                          'Authentication failed';
+      throw Exception(errorMessage);
       
-      bool hasUser = response.containsKey('user');
+    } else if (hasTokens) {
+      // SUCCESS: User authenticated successfully (existing or newly registered)
+      print('✅ Google authentication successful');
       
-      print('🔍 Response analysis - hasTokens: $hasTokens, hasUser: $hasUser');
-
-      if (hasTokens && hasUser) {
-        print('✅ Existing user authenticated successfully');
-        
-        await _handleAuthResponse(response);
-        await getProfile();
-        
-        // Initialize restaurant controller with user ID
-        await _initializeUserServices();
-        
-        Get.offAllNamed('/home');
-        
-      } else if (response['user_exists'] == false || response['requires_registration'] == true) {
-        print('🆕 New Google user detected, requesting phone number');
-        Get.toNamed('/google_phone_input', arguments: googleAuthData);
-        
-      } else if (response.containsKey('detail') || response.containsKey('error')) {
-        final errorMessage = response['detail'] ?? response['error'] ?? response['message'] ?? 'Authentication failed';
-        throw Exception(errorMessage);
-        
-      } else if (response.containsKey('id') || response.containsKey('email')) {
-        print('✅ User object received directly');
-        
-        final formattedResponse = {
-          'user': response,
-          'tokens': {
-            'access': response['access_token'] ?? response['access'],
-            'refresh': response['refresh_token'] ?? response['refresh'],
-          }
-        };
-        
-        await _handleAuthResponse(formattedResponse);
-        await getProfile();
-        
-        await _initializeUserServices();
-        Get.offAllNamed('/home');
-        
-      } else {
-        print('❌ Unexpected response format: ${response.keys}');
-        throw Exception('Unexpected response from server. Please try again.');
+      // Extract and save tokens
+      Map<String, dynamic> tokens = {};
+      
+      if (response.containsKey('access_token')) {
+        tokens['access'] = response['access_token'];
+      } else if (response.containsKey('access')) {
+        tokens['access'] = response['access'];
       }
       
-    } catch (e) {
-      print('❌ Error handling Google auth response: $e');
-      rethrow;
+      if (response.containsKey('refresh_token')) {
+        tokens['refresh'] = response['refresh_token'];
+      } else if (response.containsKey('refresh')) {
+        tokens['refresh'] = response['refresh'];
+      }
+      
+      await _tokenService.saveTokens(tokens);
+      await _initializeToken();
+      print('✅ Tokens saved successfully');
+      
+      // Extract and save user data
+      if (response.containsKey('user')) {
+        // User data in nested 'user' object
+        final userData = response['user'];
+        _user.value = User.fromJson(userData);
+        await _tokenService.saveUserData(_user.value!);
+        print('✅ User data saved from nested object: ${_user.value?.email}');
+      } else if (response.containsKey('id') || response.containsKey('email')) {
+        // User data in main response object
+        _user.value = User.fromJson(response);
+        await _tokenService.saveUserData(_user.value!);
+        print('✅ User data saved from main object: ${_user.value?.email}');
+      } else {
+        // Try to get profile from API
+        print('⚠️ No user data in response, fetching profile...');
+        await getProfile();
+      }
+      
+      // Initialize services and go to home
+      await _initializeUserServices();
+      Get.offAllNamed('/home');
+      
+    } else if (needsRegistration) {
+      // NEW USER: Needs to provide additional information
+      print('🆕 New Google user detected, requesting additional info');
+      
+      // Prepare data for registration screen
+      // Include all fields from googleAuthData plus any additional info from response
+      final registrationData = {
+        ...googleAuthData,
+        'user_type': 'customer',
+      };
+      
+      // Also include any fields the backend says are required
+      if (response.containsKey('required_fields')) {
+        print('📋 Required fields from backend: ${response['required_fields']}');
+      }
+      
+      // Navigate to phone input screen or registration form
+      Get.toNamed('/google_phone_input', arguments: registrationData);
+      
+    } else {
+      // Unexpected response format
+      print('❌ Unexpected response format: ${response.keys}');
+      throw Exception('Unexpected response from server. Please try again.');
     }
+    
+  } catch (e) {
+    print('❌ Error handling Google auth response: $e');
+    throw e; // Re-throw to be handled by calling method
   }
+}
+
+Future<void> registerGoogleUser(Map<String, dynamic> registrationData) async {
+  try {
+    isLoading.value = true;
+    error.value = '';
+
+    print('📝 Google Registration data being sent: ${registrationData.keys}');
+    
+    // Ensure required fields are present
+    final requestBody = {
+      'access_token': registrationData['access_token'] ?? '',
+      'user_type': 'customer',
+      'phone': registrationData['phone'] ?? '',
+      'username': registrationData['email']?.split('@').first ?? '',
+      'first_name': registrationData['first_name'] ?? '',
+      'last_name': registrationData['last_name'] ?? '',
+      'email': registrationData['email'] ?? '',
+      // Add other fields your backend might need
+    };
+    
+    // Remove null values
+    requestBody.removeWhere((key, value) => value == null || value == '');
+    
+    final response = await _apiService.postPublic('users/auth/google/register/', requestBody);
+    
+    print('✅ Google Registration response: ${response.keys}');
+
+    // Handle response
+    if (response.containsKey('access_token') || response.containsKey('access')) {
+      await _tokenService.saveTokens(response);
+      await _initializeToken();
+      
+      // Create user object
+      final user = User.fromJson({
+        'id': response['id'],
+        'email': registrationData['email'],
+        'first_name': registrationData['first_name'],
+        'last_name': registrationData['last_name'],
+        'phone': registrationData['phone'],
+        'user_type': 'customer',
+        'is_verified': true,
+      });
+      
+      _user.value = user;
+      await _tokenService.saveUserData(user);
+
+      print('✅ Google Registration successful');
+      
+      await _initializeUserServices();
+      Get.offAllNamed('/home');
+      
+    } else if (response.containsKey('detail') || response.containsKey('error')) {
+      throw Exception(response['detail'] ?? response['error'] ?? 'Registration failed');
+    } else {
+      throw Exception('Unexpected response format');
+    }
+    
+  } catch (e) {
+    error.value = e.toString();
+    print('❌ Google Registration error: $e');
+    
+    Get.snackbar(
+      'Registration Failed',
+      error.value,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
+    
+    rethrow;
+  } finally {
+    isLoading.value = false;
+  }
+}
 
   Future<void> registerUserWithGoogle(Map<String, dynamic> userData) async {
     try {
