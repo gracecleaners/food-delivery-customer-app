@@ -49,6 +49,16 @@ class CartController extends GetxController {
     _initializeLocalCart();
   }
 
+void disposeSnackbars() {
+  try {
+    if (Get.isSnackbarOpen) {
+      Get.closeAllSnackbars();
+    }
+  } catch (e) {
+    print('Error closing snackbars: $e');
+  }
+}
+
   // Initialize local cart from storage
   void _initializeLocalCart() {
     final localCartData = GetStorage().read('local_cart');
@@ -105,43 +115,41 @@ class CartController extends GetxController {
     );
   }
 
-  // FAST LOCAL ADD TO CART - Immediate UI update
-  Future<bool> addToCart({
-    required MenuItem menuItem,
-    required int quantity,
-    required String? accessToken, // Changed to nullable
-  }) async {
-    final itemKey = '${menuItem.id}_add';
+ Future<bool> addToCart({
+  required MenuItem menuItem,
+  required int quantity,
+  required String? accessToken,
+}) async {
+  final itemKey = '${menuItem.id}_add';
+  
+  try {
+    _setItemProcessing(itemKey, true);
+    isLoading.value = true; // Set loading state
+    error.value = '';
+
+    // 1. FIRST: Add to local cart for immediate UI update
+    await _addToLocalCart(menuItem: menuItem, quantity: quantity);
     
-    try {
-      _setItemProcessing(itemKey, true);
-      error.value = '';
-
-      // 1. FIRST: Add to local cart for immediate UI update
-      await _addToLocalCart(menuItem: menuItem, quantity: quantity);
-      
-      // 2. THEN: Sync with backend in background if we have access token
-      if (accessToken != null && accessToken.isNotEmpty) {
-        _syncWithBackend(accessToken: accessToken);
-      }
-
-      Get.snackbar(
-        'Success', 
-        '${menuItem.title} added to cart',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 2),
-      );
-      return true;
-    } catch (e) {
-      error.value = e.toString();
-      // If local add failed, revert any changes
-      _revertLocalChanges();
-      Get.snackbar('Error', 'Failed to add item to cart');
-      return false;
-    } finally {
-      _setItemProcessing(itemKey, false);
+    // 2. Add a small delay to ensure smooth UI transition (2 seconds as requested)
+    await Future.delayed(const Duration(seconds: 2));
+    
+    // 3. THEN: Sync with backend in background if we have access token
+    if (accessToken != null && accessToken.isNotEmpty) {
+      _syncWithBackend(accessToken: accessToken);
     }
+
+    // Don't show snackbar here anymore - let the UI handle it
+    return true;
+  } catch (e) {
+    error.value = e.toString();
+    // If local add failed, revert any changes
+    _revertLocalChanges();
+    return false;
+  } finally {
+    _setItemProcessing(itemKey, false);
+    isLoading.value = false; // Clear loading state
   }
+}
 
   // Add item to local cart (immediate)
   Future<void> _addToLocalCart({

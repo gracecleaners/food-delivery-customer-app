@@ -35,6 +35,14 @@ class _MenuItemDetailPageState extends State<MenuItemDetailPage> {
   }
 
   @override
+  void dispose() {
+    if (Get.isSnackbarOpen) {
+      Get.closeCurrentSnackbar();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -64,7 +72,14 @@ class _MenuItemDetailPageState extends State<MenuItemDetailPage> {
                 ),
                 child: IconButton(
                   icon: Icon(Icons.arrow_back, color: TColor.primary),
-                  onPressed: () => Get.back(),
+                  onPressed: () {
+                    // Close any open snackbars before navigating
+                    if (Get.isSnackbarOpen == true) {
+                      Get.closeAllSnackbars();
+                    }
+                    // Use Navigator instead of Get.back() to avoid GetX navigation conflicts
+                    Navigator.of(context).pop();
+                  },
                 ),
               ),
               actions: [
@@ -334,15 +349,23 @@ class _MenuItemDetailPageState extends State<MenuItemDetailPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
+                        // Update your onPressed handler in the Add to Cart button:
+
                         onPressed: menuItem.isAvailable
                             ? () async {
+                                // Show loading in the button
+                                cartController.isLoading.value = true;
+
                                 try {
+                                  // Add a small delay to ensure smooth UI transition
+                                  await Future.delayed(
+                                      const Duration(milliseconds: 100));
+
                                   final success =
                                       await cartController.addToCart(
                                     menuItem: menuItem,
                                     quantity: 1,
                                     accessToken: userController.accessToken,
-                                    // Remove unitPrice parameter - backend handles discounts
                                   );
 
                                   if (success) {
@@ -353,38 +376,60 @@ class _MenuItemDetailPageState extends State<MenuItemDetailPage> {
                                           ' with ${menuItem.activePromotions.first.formattedDiscount} discount!';
                                     }
 
+                                    // Show success snackbar
                                     Get.snackbar(
                                       'Success',
                                       successMessage,
                                       snackPosition: SnackPosition.BOTTOM,
                                       backgroundColor: Colors.green,
                                       colorText: Colors.white,
+                                      duration: const Duration(seconds: 2),
+                                      margin: const EdgeInsets.all(10),
+                                      borderRadius: 10,
                                     );
 
-                                    Get.back();
+                                    // Wait for snackbar to appear before navigating back
+                                    await Future.delayed(
+                                        const Duration(milliseconds: 500));
+
+                                    // Use a different navigation approach
+                                    Navigator.of(context).pop();
+                                    // Or use this instead of Get.back():
+                                    // Get.back(id: Get.nestedKey(1)); // Use specific navigation key
                                   }
                                 } catch (e) {
+                                  // Show error snackbar
                                   Get.snackbar(
                                     'Error',
                                     'Failed to add item to cart: ${e.toString()}',
                                     snackPosition: SnackPosition.BOTTOM,
                                     backgroundColor: Colors.red,
                                     colorText: Colors.white,
+                                    duration: const Duration(seconds: 2),
+                                    margin: const EdgeInsets.all(10),
+                                    borderRadius: 10,
                                   );
+                                } finally {
+                                  // Hide loading in the button
+                                  cartController.isLoading.value = false;
                                 }
                               }
                             : null,
                         child: Obx(() {
+                          final isAddingItem = cartController.isLoading.value ||
+                              cartController
+                                  .isItemProcessing('${menuItem.id}_add');
+
                           final buttonText = menuItem.isAvailable
                               ? menuItem.hasActivePromotions
                                   ? 'Add to Cart - ${menuItem.formattedDiscountedPrice}'
                                   : 'Add to Cart - ${menuItem.formattedPrice}'
                               : 'Not Available';
 
-                          return cartController.isLoading.value
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
+                          return isAddingItem
+                              ? SizedBox(
+                                  height: 24,
+                                  width: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
