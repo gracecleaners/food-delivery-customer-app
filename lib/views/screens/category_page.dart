@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
 import 'package:food_delivery_customer/controller/category_controller.dart';
-import 'package:food_delivery_customer/controller/restaurant_controller.dart';
-import 'package:food_delivery_customer/models/restaurant.dart';
+import 'package:food_delivery_customer/models/menu_item.dart';
+import 'package:food_delivery_customer/views/screens/item_detail.dart';
+import 'package:food_delivery_customer/services/api_service.dart';
 import 'package:get/get.dart';
 
 class CategoryPage extends StatefulWidget {
@@ -22,50 +23,135 @@ class CategoryPage extends StatefulWidget {
 class _CategoryPageState extends State<CategoryPage> {
   final TextEditingController _searchController = TextEditingController();
   final CategoryController categoryController = Get.find();
-  final RestaurantController restaurantController = Get.find();
+  final ApiService _apiService = Get.find();
   
   String _searchQuery = '';
   bool _isSearching = false;
-
-  List<RestaurantProfile> get filteredRestaurants {
-    return restaurantController.restaurants.where((restaurant) {
-      final categories = restaurant.categories ?? <dynamic>[];
-
-      final hasCategory = categories.any((cat) {
-        if (cat == null) return false;
-
-        if (cat is Map<String, dynamic>) {
-          final idVal = cat['id'];
-          if (idVal == null) return false;
-          if (idVal is int) return idVal == widget.categoryId;
-          if (idVal is String) return int.tryParse(idVal) == widget.categoryId;
-          return false;
-        }
-
-        if (cat is int) return cat == widget.categoryId;
-        if (cat is String) return int.tryParse(cat) == widget.categoryId;
-
-        return false;
-      });
-
-      final name = (restaurant.restaurantName ?? '').toString().toLowerCase();
-      final matchesSearch = name.contains(_searchQuery.toLowerCase());
-
-      final isActive = restaurant.isActive == true;
-      final isApproved = restaurant.isApproved == true;
-
-      return hasCategory && matchesSearch && isActive && isApproved;
-    }).toList();
-  }
+  final RxList<MenuItem> _categoryMenuItems = <MenuItem>[].obs;
+  final RxBool _isLoadingMenuItems = false.obs;
 
   @override
   void initState() {
     super.initState();
     print('🔵 CategoryPage initState - categoryId: ${widget.categoryId}');
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('🔵 Loading category detail for ID: ${widget.categoryId}');
-      categoryController.getCategoryDetail(widget.categoryId);
+      _loadCategoryMenuItems();
     });
+  }
+
+  Future<void> _loadCategoryMenuItems() async {
+    try {
+      _isLoadingMenuItems.value = true;
+      print('🔍 Loading menu items for category: ${widget.categoryId}');
+      
+      // Try the category-specific endpoint first
+      try {
+        final response = await _apiService.get(
+          'restaurants/categories/${widget.categoryId}/items/'
+        );
+        
+        List<dynamic> itemsList = [];
+        
+        if (response is List) {
+          itemsList = response;
+        } else if (response is Map && response.containsKey('data')) {
+          itemsList = response['data'] ?? [];
+        } else if (response is Map && response.containsKey('results')) {
+          itemsList = response['results'] ?? [];
+        }
+        
+        if (itemsList.isNotEmpty) {
+          final menuItems = itemsList
+              .map((item) => MenuItem.fromJson(item as Map<String, dynamic>))
+              .where((item) => item.isAvailable)
+              .toList();
+          
+          _categoryMenuItems.value = menuItems;
+          print('✅ Loaded ${menuItems.length} menu items from category endpoint');
+          return;
+        }
+      } catch (e) {
+        print('⚠️ Category-specific endpoint not available: $e');
+      }
+      
+      // Fallback: Fetch all menu items and filter by category
+      print('🔄 Fetching all menu items and filtering by category...');
+      final response = await _apiService.get('restaurants/items/');
+      
+      List<dynamic> itemsList = [];
+      
+      if (response is List) {
+        itemsList = response;
+      } else if (response is Map && response.containsKey('data')) {
+        itemsList = response['data'] ?? [];
+      } else if (response is Map && response.containsKey('results')) {
+        itemsList = response['results'] ?? [];
+      }
+      
+      print('📦 Total items fetched: ${itemsList.length}');
+      
+      final menuItems = itemsList
+          .map((item) {
+            try {
+              return MenuItem.fromJson(item as Map<String, dynamic>);
+            } catch (e) {
+              print('❌ Error parsing menu item: $e');
+              return null;
+            }
+          })
+          .whereType<MenuItem>()
+          .where((item) {
+            // Filter by category
+            final itemCategory = item.category;
+            final matchesCategory = itemCategory == widget.categoryId;
+            
+            // Only show available items
+            final isAvailable = item.isAvailable;
+            
+            if (matchesCategory) {
+              print('✅ Found item: ${item.title} (category: $itemCategory)');
+            }
+            
+            return matchesCategory && isAvailable;
+          })
+          .toList();
+      
+      _categoryMenuItems.value = menuItems;
+      print('✅ Loaded ${menuItems.length} menu items for category ${widget.categoryId} after filtering');
+      
+      if (menuItems.isEmpty) {
+        print('⚠️ No menu items found for category ${widget.categoryId}');
+        print('   This could mean:');
+        print('   1. No items are assigned to this category');
+        print('   2. All items in this category are unavailable');
+        print('   3. The category field name might be different');
+      }
+      
+    } catch (e, stackTrace) {
+      print('❌ Error loading category menu items: $e');
+      print('❌ Stack trace: $stackTrace');
+      Get.snackbar(
+        'Error',
+        'Failed to load menu items: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      _isLoadingMenuItems.value = false;
+    }
+  }
+
+  List<MenuItem> get filteredMenuItems {
+    if (_searchQuery.isEmpty) {
+      return _categoryMenuItems;
+    }
+    
+    return _categoryMenuItems.where((item) {
+      final title = item.title.toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return title.contains(query);
+    }).toList();
   }
 
   @override
@@ -78,62 +164,66 @@ class _CategoryPageState extends State<CategoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      body: Obx(() {
-        final category = categoryController.selectedCategory.value;
-        final isLoading = categoryController.isLoadingDetail.value;
-
-        print('🔵 Building CategoryPage - isLoading: $isLoading, category: ${category?.name}');
-
-        if (isLoading) {
-          return _buildLoadingState();
-        }
-
-        return CustomScrollView(
-          slivers: [
-            // App Bar with Category Title
-            SliverAppBar(
-              backgroundColor: Colors.white,
-              elevation: 1,
-              pinned: true,
-              leading: IconButton(
-                icon: Icon(Icons.arrow_back_ios, color: TColor.primary),
-                onPressed: () => Navigator.pop(context),
-              ),
-              title: Text(
-                widget.categoryName,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: TColor.primaryText,
-                ),
-              ),
-              centerTitle: false,
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(70),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: _buildSearchField(),
-                ),
+      body: CustomScrollView(
+        slivers: [
+          // App Bar with Category Title
+          SliverAppBar(
+            backgroundColor: TColor.primary,
+            elevation: 0,
+            pinned: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              widget.categoryName,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
+            centerTitle: false,
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(70),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: _buildSearchField(),
+              ),
+            ),
+          ),
 
-            // Restaurant List
-            restaurantController.isLoading.value
-                ? _buildRestaurantsLoading()
-                : filteredRestaurants.isEmpty
-                    ? _buildEmptyState()
-                    : SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final restaurant = filteredRestaurants[index];
-                            return _buildRestaurantCard(restaurant);
-                          },
-                          childCount: filteredRestaurants.length,
-                        ),
-                      ),
-          ],
-        );
-      }),
+          // Menu Items Grid
+          Obx(() {
+            if (_isLoadingMenuItems.value) {
+              return _buildMenuItemsLoading();
+            }
+            
+            if (filteredMenuItems.isEmpty) {
+              return _buildEmptyState();
+            }
+            
+            return SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.75,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final menuItem = filteredMenuItems[index];
+                    return _buildMenuItemCard(menuItem);
+                  },
+                  childCount: filteredMenuItems.length,
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 
@@ -142,17 +232,18 @@ class _CategoryPageState extends State<CategoryPage> {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.1),
             spreadRadius: 1,
-            blurRadius: 15,
-            offset: const Offset(0, 3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: TextField(
         controller: _searchController,
+        style: const TextStyle(color: Colors.black),
         decoration: InputDecoration(
-          hintText: 'Search ${widget.categoryName} restaurants...',
+          hintText: 'Search ${widget.categoryName}...',
           hintStyle: TextStyle(
             color: Colors.grey[500],
             fontSize: 16,
@@ -178,7 +269,7 @@ class _CategoryPageState extends State<CategoryPage> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide(color: TColor.primary, width: 2),
+            borderSide: BorderSide(color: Colors.white, width: 2),
           ),
         ),
         onChanged: (value) {
@@ -191,20 +282,18 @@ class _CategoryPageState extends State<CategoryPage> {
     );
   }
 
-  Widget _buildRestaurantCard(RestaurantProfile restaurant) {
+  Widget _buildMenuItemCard(MenuItem menuItem) {
     return GestureDetector(
       onTap: () {
-        // Navigate to restaurant details
-        // Get.to(() => RestaurantDetailPage(restaurantId: restaurant.id));
+        Get.to(() => MenuItemDetailPage(menuItemId: menuItem.id));
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withOpacity(0.15),
               spreadRadius: 1,
               blurRadius: 8,
               offset: const Offset(0, 3),
@@ -212,131 +301,153 @@ class _CategoryPageState extends State<CategoryPage> {
           ],
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Restaurant Image
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            // Menu Item Image
+            Expanded(
+              flex: 3,
               child: Stack(
                 children: [
-                  Container(
-                    height: 130,
-                    width: double.infinity,
-                    color: Colors.grey[300],
-                    child: restaurant.imageUrl != null
-                        ? Image.network(
-                            restaurant.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(
-                                Icons.restaurant,
-                                color: Colors.grey[500],
-                                size: 50,
-                              );
-                            },
-                          )
-                        : Icon(
-                            Icons.restaurant,
-                            color: Colors.grey[500],
-                            size: 50,
-                          ),
-                  ),
-                  Positioned(
-                    top: 12,
-                    right: 12,
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            spreadRadius: 1,
-                            blurRadius: 5,
-                            offset: const Offset(0, 2),
-                          )
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.star, color: Colors.amber, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            restaurant.rating.toStringAsFixed(1),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                      width: double.infinity,
+                      height: double.infinity,
+                      color: Colors.grey[100],
+                      child: menuItem.imageUrl != null
+                          ? Image.network(
+                              menuItem.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Icon(
+                                  Icons.fastfood,
+                                  color: Colors.grey[400],
+                                  size: 50,
+                                );
+                              },
+                            )
+                          : Icon(
+                              Icons.fastfood,
+                              color: Colors.grey[400],
+                              size: 50,
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
+                  
+                  // Promotion Badge
+                  if (menuItem.hasActivePromotions)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          menuItem.activePromotions.first.formattedDiscount,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
             
-            // Restaurant Info
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          restaurant.restaurantName,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: TColor.primaryText,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+            // Menu Item Info
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Title
+                    Text(
+                      menuItem.title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: TColor.primaryText,
                       ),
-                      if (restaurant.isActive)
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    
+                    // Price and Add Button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Price
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (menuItem.hasActivePromotions) ...[
+                              Text(
+                                menuItem.formattedDiscountedPrice,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: TColor.primary,
+                                ),
+                              ),
+                              Text(
+                                menuItem.formattedPrice,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                            ] else
+                              Text(
+                                menuItem.formattedPrice,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: TColor.primary,
+                                ),
+                              ),
+                          ],
+                        ),
+                        
+                        // Add Button
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          width: 32,
+                          height: 32,
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
+                            color: TColor.primary,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: TColor.primary.withOpacity(0.3),
+                                spreadRadius: 1,
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          child: const Text(
-                            'Open',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.green,
-                            ),
+                          child: const Icon(
+                            Icons.add,
+                            color: Colors.white,
+                            size: 20,
                           ),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  
-                  // Address
-                  Row(
-                    children: [
-                      Icon(Icons.location_on, color: TColor.primary, size: 16),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          restaurant.address,
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -345,84 +456,97 @@ class _CategoryPageState extends State<CategoryPage> {
     );
   }
 
-  Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: TColor.primary),
-          const SizedBox(height: 16),
-          Text(
-            'Loading category...',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRestaurantsLoading() {
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(12),
+  Widget _buildMenuItemsLoading() {
+    return SliverPadding(
+      padding: const EdgeInsets.all(16),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.75,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.15),
+                    spreadRadius: 1,
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        height: 16,
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      decoration: BoxDecoration(
                         color: Colors.grey[300],
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        height: 12,
-                        color: Colors.grey[300],
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        width: 100,
-                        height: 12,
-                        color: Colors.grey[300],
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
-        childCount: 3,
+                  Expanded(
+                    flex: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                height: 12,
+                                color: Colors.grey[300],
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                width: 80,
+                                height: 12,
+                                color: Colors.grey[300],
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                width: 60,
+                                height: 14,
+                                color: Colors.grey[300],
+                              ),
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+          childCount: 6,
+        ),
       ),
     );
   }
@@ -434,19 +558,20 @@ class _CategoryPageState extends State<CategoryPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.restaurant,
+              Icons.fastfood,
               size: 80,
               color: Colors.grey[400],
             ),
             const SizedBox(height: 20),
             Text(
               _isSearching
-                  ? 'No restaurants found for "$_searchQuery"'
-                  : 'No ${widget.categoryName} restaurants available',
+                  ? 'No items found for "$_searchQuery"'
+                  : 'No ${widget.categoryName} items available',
               style: TextStyle(
                 fontSize: 18,
                 color: Colors.grey[600],
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
             if (_isSearching)
@@ -464,6 +589,15 @@ class _CategoryPageState extends State<CategoryPage> {
                     color: TColor.primary,
                     fontSize: 16,
                   ),
+                ),
+              )
+            else
+              TextButton.icon(
+                onPressed: _loadCategoryMenuItems,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: TextButton.styleFrom(
+                  foregroundColor: TColor.primary,
                 ),
               ),
           ],
