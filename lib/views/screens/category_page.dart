@@ -160,6 +160,21 @@ class _CategoryPageState extends State<CategoryPage> {
     super.dispose();
   }
 
+  // Responsive grid configuration
+  int _getCrossAxisCount(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width > 600) return 3; // Tablets and larger
+    if (width > 400) return 2; // Large phones
+    return 2; // Small phones
+  }
+
+  double _getAspectRatio(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width > 600) return 0.78; // Tablets
+    if (width > 400) return 0.80; // Large phones
+    return 0.82; // Small phones
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -204,13 +219,13 @@ class _CategoryPageState extends State<CategoryPage> {
             }
             
             return SliverPadding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.75,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: _getCrossAxisCount(context),
+                  childAspectRatio: _getAspectRatio(context),
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -283,222 +298,246 @@ class _CategoryPageState extends State<CategoryPage> {
   }
 
   Widget _buildMenuItemCard(MenuItem menuItem) {
-    return GestureDetector(
-      onTap: () {
-        Get.to(() => MenuItemDetailPage(menuItemId: menuItem.id));
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.15),
-              spreadRadius: 1,
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate responsive sizes based on card width
+        final cardWidth = constraints.maxWidth;
+        final imageHeight = cardWidth * 0.85; // Image takes 85% of card width
+        final fontSize = cardWidth * 0.085; // Responsive font size
+        final priceFontSize = cardWidth * 0.09;
+        final buttonSize = cardWidth * 0.2;
+        
+        return GestureDetector(
+          onTap: () {
+            Get.to(() => MenuItemDetailPage(menuItemId: menuItem.id));
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.12),
+                  spreadRadius: 1,
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Menu Item Image
-            Expanded(
-              flex: 3,
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(20),
-                    ),
-                    child: Container(
-                      width: double.infinity,
-                      height: double.infinity,
-                      color: Colors.grey[100],
-                      child: menuItem.imageUrl != null
-                          ? Image.network(
-                              menuItem.imageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Icon(
-                                  Icons.fastfood,
-                                  color: Colors.grey[400],
-                                  size: 50,
-                                );
-                              },
-                            )
-                          : Icon(
-                              Icons.fastfood,
-                              color: Colors.grey[400],
-                              size: 50,
-                            ),
-                    ),
-                  ),
-                  
-                  // Promotion Badge
-                  if (menuItem.hasActivePromotions)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          menuItem.activePromotions.first.formattedDiscount,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            
-            // Menu Item Info
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Menu Item Image
+                Stack(
                   children: [
-                    // Title
-                    Text(
-                      menuItem.title,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: TColor.primaryText,
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      child: Container(
+                        width: double.infinity,
+                        height: imageHeight,
+                        color: Colors.grey[100],
+                        child: menuItem.imageUrl != null
+                            ? Image.network(
+                                menuItem.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.fastfood,
+                                    color: Colors.grey[400],
+                                    size: cardWidth * 0.3,
+                                  );
+                                },
+                              )
+                            : Icon(
+                                Icons.fastfood,
+                                color: Colors.grey[400],
+                                size: cardWidth * 0.3,
+                              ),
+                      ),
                     ),
                     
-                    // Price and Add Button
-                    Row(
+                    // Promotion Badge
+                    if (menuItem.hasActivePromotions)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: cardWidth * 0.05,
+                            vertical: cardWidth * 0.025,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            menuItem.activePromotions.first.formattedDiscount,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: fontSize * 0.75,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                
+                // Menu Item Info
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.all(cardWidth * 0.08),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Price
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (menuItem.hasActivePromotions) ...[
-                              Text(
-                                menuItem.formattedDiscountedPrice,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: TColor.primary,
-                                ),
-                              ),
-                              Text(
-                                menuItem.formattedPrice,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey,
-                                  decoration: TextDecoration.lineThrough,
-                                ),
-                              ),
-                            ] else
-                              Text(
-                                menuItem.formattedPrice,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: TColor.primary,
-                                ),
-                              ),
-                          ],
+                        // Title
+                        Flexible(
+                          child: Text(
+                            menuItem.title,
+                            style: TextStyle(
+                              fontSize: fontSize.clamp(11.0, 14.0),
+                              fontWeight: FontWeight.bold,
+                              color: TColor.primaryText,
+                              height: 1.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         
-                        // Add Button
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: TColor.primary,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: TColor.primary.withOpacity(0.3),
-                                spreadRadius: 1,
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
+                        SizedBox(height: cardWidth * 0.04),
+                        
+                        // Price and Add Button
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            // Price
+                            Flexible(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (menuItem.hasActivePromotions) ...[
+                                    Text(
+                                      menuItem.formattedDiscountedPrice,
+                                      style: TextStyle(
+                                        fontSize: priceFontSize.clamp(12.0, 15.0),
+                                        fontWeight: FontWeight.bold,
+                                        color: TColor.primary,
+                                        height: 1.0,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      menuItem.formattedPrice,
+                                      style: TextStyle(
+                                        fontSize: (fontSize * 0.75).clamp(9.0, 11.0),
+                                        color: Colors.grey,
+                                        decoration: TextDecoration.lineThrough,
+                                        height: 1.0,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ] else
+                                    Text(
+                                      menuItem.formattedPrice,
+                                      style: TextStyle(
+                                        fontSize: priceFontSize.clamp(12.0, 15.0),
+                                        fontWeight: FontWeight.bold,
+                                        color: TColor.primary,
+                                        height: 1.0,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.add,
-                            color: Colors.white,
-                            size: 20,
-                          ),
+                            ),
+                            
+                            SizedBox(width: cardWidth * 0.04),
+                            
+                            // Add Button
+                            Container(
+                              width: buttonSize.clamp(28.0, 36.0),
+                              height: buttonSize.clamp(28.0, 36.0),
+                              decoration: BoxDecoration(
+                                color: TColor.primary,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: TColor.primary.withOpacity(0.3),
+                                    spreadRadius: 1,
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.add,
+                                color: Colors.white,
+                                size: (buttonSize * 0.6).clamp(16.0, 20.0),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildMenuItemsLoading() {
     return SliverPadding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.75,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: _getCrossAxisCount(context),
+          childAspectRatio: _getAspectRatio(context),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
         ),
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             return Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.15),
+                    color: Colors.grey.withOpacity(0.12),
                     spreadRadius: 1,
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
+                  Container(
+                    height: MediaQuery.of(context).size.width / _getCrossAxisCount(context) * 0.85,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
                       ),
                     ),
                   ),
                   Expanded(
-                    flex: 2,
                     child: Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(10),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -508,14 +547,20 @@ class _CategoryPageState extends State<CategoryPage> {
                             children: [
                               Container(
                                 width: double.infinity,
-                                height: 12,
-                                color: Colors.grey[300],
+                                height: 11,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 5),
                               Container(
-                                width: 80,
-                                height: 12,
-                                color: Colors.grey[300],
+                                width: 60,
+                                height: 11,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
                               ),
                             ],
                           ),
@@ -523,13 +568,16 @@ class _CategoryPageState extends State<CategoryPage> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
-                                width: 60,
-                                height: 14,
-                                color: Colors.grey[300],
+                                width: 50,
+                                height: 13,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
                               ),
                               Container(
-                                width: 32,
-                                height: 32,
+                                width: 28,
+                                height: 28,
                                 decoration: BoxDecoration(
                                   color: Colors.grey[300],
                                   shape: BoxShape.circle,
