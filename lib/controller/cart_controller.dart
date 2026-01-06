@@ -17,8 +17,19 @@ class CartController extends GetxController {
   Cart? get cart =>
       _localCart.value ?? _cart.value; // Prefer local cart for display
   List<CartItem> get cartItems => cart?.items ?? [];
-  int get cartItemCount =>
-      cartItems.fold(0, (sum, item) => sum + item.quantity);
+  int get cartItemCount {
+  if (_localCart.value != null && _localCart.value!.items.isNotEmpty) {
+    final count = _localCart.value!.items.fold(0, (sum, item) => sum + item.quantity);
+    print('🛒 cartItemCount calculated: $count');
+    return count;
+  } else if (_cart.value != null && _cart.value!.items.isNotEmpty) {
+    final count = _cart.value!.items.fold(0, (sum, item) => sum + item.quantity);
+    print('🛒 cartItemCount calculated from remote: $count');
+    return count;
+  }
+  print('🛒 cartItemCount: 0');
+  return 0;
+}
   double get cartTotal => cart?.totalPrice ?? 0.0;
   bool get hasItems => cartItems.isNotEmpty;
   final RxMap<String, bool> _itemProcessingStates = <String, bool>{}.obs;
@@ -46,11 +57,17 @@ class CartController extends GetxController {
     }
   }
 
-  @override
-  void onInit() {
-    super.onInit();
-    _initializeLocalCart();
-  }
+@override
+void onInit() {
+  super.onInit();
+  _initializeLocalCart();
+  
+  // Listen for changes to force UI updates
+  ever(_localCart, (_) {
+    print('🛒 Local cart changed, updating badge count: $cartItemCount');
+    update(); // This forces UI to rebuild
+  });
+}
 
   void disposeSnackbars() {
     try {
@@ -64,17 +81,20 @@ class CartController extends GetxController {
 
   // Initialize local cart from storage
   void _initializeLocalCart() {
+  try {
     final localCartData = GetStorage().read('local_cart');
     if (localCartData != null) {
-      try {
-        _localCart.value = Cart.fromJson(localCartData);
-        print('🛒 Local cart loaded: ${_localCart.value?.items.length} items');
-      } catch (e) {
-        print('❌ Error loading local cart: $e');
-        _clearLocalCart();
-      }
+      _localCart.value = Cart.fromJson(localCartData);
+      print('🛒 Local cart loaded: ${_localCart.value?.items.length} items');
+    } else {
+      _localCart.value = null;
+      print('🛒 No local cart found in storage');
     }
+  } catch (e) {
+    print('❌ Error loading local cart: $e');
+    _clearLocalCart();
   }
+}
 
   // Save local cart to storage
   void _saveLocalCart() {
