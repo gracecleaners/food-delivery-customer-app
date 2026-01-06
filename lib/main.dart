@@ -14,6 +14,7 @@ import 'package:food_delivery_customer/routes/app_pages.dart';
 import 'package:food_delivery_customer/services/api_service.dart';
 import 'package:food_delivery_customer/services/google.dart';
 import 'package:food_delivery_customer/splash.dart';
+import 'package:food_delivery_customer/utils/snackbar.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:food_delivery_customer/services/token_service.dart';
@@ -31,6 +32,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
+      navigatorKey: SnackbarUtils.navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Food Delivery',
       theme: ThemeData(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:food_delivery_customer/controller/user_controller.dart';
 import 'package:food_delivery_customer/models/menu_item.dart';
+import 'package:food_delivery_customer/utils/snackbar.dart';
 import 'package:get/get.dart';
 import 'package:food_delivery_customer/services/api_service.dart';
 import 'package:food_delivery_customer/models/wishlist.dart';
@@ -97,13 +98,7 @@ class WishlistController extends GetxController {
       // Check if user is logged in
       final userController = Get.find<UserController>();
       if (!userController.isLoggedIn) {
-        Get.snackbar(
-          'Login Required',
-          'Please login to manage wishlist',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-        );
+        SnackbarUtils.showError('Login Required');
         return;
       }
 
@@ -126,29 +121,15 @@ class WishlistController extends GetxController {
 
       // Show immediate feedback
       if (wasInWishlist) {
-        Get.snackbar(
-          'Removed',
-          'Removed from wishlist',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.grey[700],
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2),
-        );
+        SnackbarUtils.showSuccess('Removed from Wish List');
       } else {
-        Get.snackbar(
-          'Success',
-          'Added to wishlist',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2),
-        );
+       SnackbarUtils.showSuccess('Added to wishlist');
       }
     } catch (e) {
       error.value = e.toString();
       // If local toggle failed, revert any changes
       _revertLocalChanges();
-      Get.snackbar('Error', 'Failed to update wishlist');
+      SnackbarUtils.showError('Failed to update wishlist');
       rethrow;
     } finally {
       _setItemProcessing(itemKey, false);
