@@ -30,28 +30,59 @@ class UserController extends GetxController {
   // Reactive access token
   final RxString _accessToken = ''.obs;
 
-  @override
-  void onInit() {
-    super.onInit();
-    _initializeToken();
-    checkAuthStatus();
-  }
+@override
+void onInit() {
+  super.onInit();
+  // Initialize token immediately and check auth
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await syncTokenFromStorage();
+    await checkAuthStatus();
+  });
+}
 
   // Getters
   User? get user => _user.value;
-  bool get isLoggedIn => _accessToken.value.isNotEmpty;
+  bool get isLoggedIn { 
+  // Check both reactive variable AND storage directly
+  if (_accessToken.value.isNotEmpty) {
+    return true;
+  }
+  
+  // Fallback to check storage synchronously
+  final tokenFromStorage = GetStorage().read(TokenService.accessTokenKey);
+  if (tokenFromStorage != null && tokenFromStorage is String && tokenFromStorage.isNotEmpty) {
+    // Update the reactive variable
+    _accessToken.value = tokenFromStorage;
+    return true;
+  }
+  
+  return false;
+}
   String? get accessToken {
-  // CRITICAL FIX: Check both local state and storage
+  // If we have token in reactive variable, use it
   if (_accessToken.value.isNotEmpty) {
     return _accessToken.value;
-  } else {
-    // Try to get from storage synchronously if local state is empty
-    final token = GetStorage().read(TokenService.accessTokenKey);
-    if (token != null) {
-      _accessToken.value = token;
-      return token;
-    }
-    return null;
+  }
+  
+  // Otherwise check storage
+  final tokenFromStorage = GetStorage().read(TokenService.accessTokenKey);
+  if (tokenFromStorage != null && tokenFromStorage is String) {
+    // Update reactive variable for next time
+    _accessToken.value = tokenFromStorage;
+    return tokenFromStorage;
+  }
+  
+  return null;
+}
+
+Future<void> syncTokenFromStorage() async {
+  try {
+    final token = await _tokenService.getAccessToken();
+    _accessToken.value = token ?? '';
+    print('🔄 Token synced from storage: ${_accessToken.value.isNotEmpty ? "present" : "empty"}');
+  } catch (e) {
+    print('❌ Error syncing token from storage: $e');
+    _accessToken.value = '';
   }
 }
 
@@ -548,37 +579,46 @@ class UserController extends GetxController {
   }
 
   Future<void> verifyOtp(String email, String otp) async {
-    try {
-      isLoading.value = true;
-      error.value = '';
+  try {
+    isLoading.value = true;
+    error.value = '';
 
-      final response = await _apiService.post('auth/verify-otp/', {
-        'email': email,
-        'otp': otp,
-      });
+    final response = await _apiService.post('auth/verify-otp/', {
+      'email': email,
+      'otp': otp,
+    });
 
-      if (response['user_exists'] == true) {
-        await _tokenService.saveTokens(response['tokens']);
-        await _initializeToken();
-
-        _user.value = User.fromJson(response['user']);
-        await _tokenService.saveUserData(_user.value!);
-
-        print('✅ OTP verification successful');
-
-        await _initializeUserServices();
-
-        Get.offAllNamed('/home');
-      } else {
-        Get.toNamed('/register', arguments: {'email': email});
-      }
-    } catch (e) {
-      error.value = e.toString();
-      rethrow;
-    } finally {
-      isLoading.value = false;
+    if (response['user_exists'] == true) {
+      // CRITICAL FIX: Save tokens and immediately update local state
+      await _tokenService.saveTokens(response['tokens']);
+      
+      // CRITICAL FIX: Force initialize token from storage
+      final token = await _tokenService.getAccessToken();
+      _accessToken.value = token ?? '';
+      
+      print('🔐 Token after OTP verification: ${_accessToken.value.isNotEmpty ? "present" : "empty"}');
+      
+      // Create and save user
+      _user.value = User.fromJson(response['user']);
+      await _tokenService.saveUserData(_user.value!);
+      
+      print('✅ OTP verification successful - User: ${_user.value?.email}');
+      
+      // CRITICAL FIX: Initialize services immediately
+      await _initializeUserServices();
+      
+      Get.offAllNamed('/home');
+    } else {
+      Get.toNamed('/register', arguments: {'email': email});
     }
+  } catch (e) {
+    error.value = e.toString();
+    rethrow;
+  } finally {
+    isLoading.value = false;
   }
+}
+
 
   Future<void> loginWithEmail(String email, String password) async {
     try {
@@ -679,44 +719,56 @@ class UserController extends GetxController {
   }
 
   Future<void> _initializeUserServices() async {
-    try {
-      // CRITICAL FIX: Get token directly from storage to ensure it's fresh
-      final token = await _tokenService.getAccessToken();
-
-      if (token == null || token.isEmpty) {
-        print('❌ Cannot initialize services: No access token in storage');
-        return;
-      }
-
-      final userId = _user.value?.id?.toString() ?? '';
-      if (userId.isEmpty) {
-        print('⚠️ No user ID available for restaurant controller');
-      }
-
-      print('🔄 Initializing all user services with token...');
-
-      // CRITICAL FIX: Pass the token directly, don't rely on getter
-      // Initialize RestaurantController with user login
-      final restaurantController = Get.find<RestaurantController>();
-      if (userId.isNotEmpty) {
-        await restaurantController.onUserLogin(userId);
-      }
-
-      // Initialize Cart with direct token
-      final cartController = Get.find<CartController>();
-      print('🛒 Initializing cart...');
-      await cartController.initializeCart(accessToken: token);
-
-      // Initialize Wishlist with direct token
-      final wishlistController = Get.find<WishlistController>();
-      print('❤️ Initializing wishlist...');
-      await wishlistController.loadWishlist(token);
-
-      print('✅ All user services initialized successfully');
-    } catch (e) {
-      print('⚠️ Error initializing user services: $e');
+  try {
+    // CRITICAL FIX: First ensure token is synced
+    await syncTokenFromStorage();
+    
+    if (!isLoggedIn) {
+      print('❌ Cannot initialize services: User not logged in');
+      
+      // Debug info
+      final tokenFromStorage = GetStorage().read(TokenService.accessTokenKey);
+      print('🔍 Storage token: ${tokenFromStorage != null ? "exists" : "null"}');
+      print('🔍 Reactive token: ${_accessToken.value.isNotEmpty ? "exists" : "empty"}');
+      
+      return;
     }
+    
+    final token = accessToken;
+    if (token == null || token.isEmpty) {
+      print('❌ Cannot initialize services: No access token after sync');
+      return;
+    }
+
+    final userId = _user.value?.id?.toString() ?? '';
+    if (userId.isEmpty) {
+      print('⚠️ No user ID available for restaurant controller');
+    }
+
+    print('🔄 Initializing all user services...');
+    print('🔐 Using token: ${token.substring(0, 20)}...');
+    
+    // Initialize RestaurantController with user login
+    final restaurantController = Get.find<RestaurantController>();
+    if (userId.isNotEmpty) {
+      await restaurantController.onUserLogin(userId);
+    }
+    
+    // Initialize Cart
+    final cartController = Get.find<CartController>();
+    print('🛒 Initializing cart...');
+    await cartController.initializeCart(accessToken: token);
+    
+    // Initialize Wishlist
+    final wishlistController = Get.find<WishlistController>();
+    print('❤️ Initializing wishlist...');
+    await wishlistController.loadWishlist(token);
+    
+    print('✅ All user services initialized successfully');
+  } catch (e) {
+    print('⚠️ Error initializing user services: $e');
   }
+}
 
   Future<void> checkAuthStatus() async {
     try {
@@ -896,16 +948,25 @@ class UserController extends GetxController {
     }
   }
 
-  Future<void> createUserFromOtpResponse(Map<String, dynamic> userData) async {
-    try {
-      _user.value = User.fromJson(userData);
-      await _tokenService.saveUserData(_user.value!);
-      print('✅ User created from OTP response: ${_user.value?.email}');
-    } catch (e) {
-      print('❌ Error creating user from OTP response: $e');
-      throw Exception('Failed to create user from OTP response');
-    }
+ Future<void> createUserFromOtpResponse(Map<String, dynamic> userData) async {
+  try {
+    // CRITICAL FIX: Get token from storage before creating user
+    final token = await _tokenService.getAccessToken();
+    _accessToken.value = token ?? '';
+    
+    _user.value = User.fromJson(userData);
+    await _tokenService.saveUserData(_user.value!);
+    
+    print('✅ User created from OTP response: ${_user.value?.email}');
+    print('🔐 Token state after user creation: ${_accessToken.value.isNotEmpty ? "present" : "empty"}');
+    
+    // CRITICAL FIX: Initialize services after user creation
+    await _initializeUserServices();
+  } catch (e) {
+    print('❌ Error creating user from OTP response: $e');
+    throw Exception('Failed to create user from OTP response');
   }
+}
 
   void clearUser() async {
     // Clear restaurant controller data
