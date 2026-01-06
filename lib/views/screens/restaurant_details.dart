@@ -3,6 +3,7 @@ import 'package:food_delivery_customer/constants/colors.dart';
 import 'package:food_delivery_customer/controller/cart_controller.dart';
 import 'package:food_delivery_customer/controller/restaurant_controller.dart';
 import 'package:food_delivery_customer/controller/user_controller.dart';
+import 'package:food_delivery_customer/views/screens/item_detail.dart';
 import 'package:get/get.dart';
 import 'package:food_delivery_customer/models/menu_item.dart';
 import 'package:food_delivery_customer/models/restaurant.dart';
@@ -378,184 +379,192 @@ class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
   Widget _buildMenuItemCard(MenuItem menuItem) {
     final cartController = Get.find<CartController>();
     final cardWidth = MediaQuery.of(context).size.width - 40;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Item Image
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(12),
-              image: menuItem.imageUrl != null
-                  ? DecorationImage(
-                      image: NetworkImage(menuItem.imageUrl!),
-                      fit: BoxFit.cover,
-                    )
+    return GestureDetector(
+      onTap: () {
+        Get.to(MenuItemDetailPage(menuItemId: menuItem.id));
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Item Image
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+                image: menuItem.imageUrl != null
+                    ? DecorationImage(
+                        image: NetworkImage(menuItem.imageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: menuItem.imageUrl == null
+                  ? Icon(Icons.fastfood, color: Colors.grey[400], size: 40)
                   : null,
             ),
-            child: menuItem.imageUrl == null
-                ? Icon(Icons.fastfood, color: Colors.grey[400], size: 40)
-                : null,
-          ),
 
-          const SizedBox(width: 16),
+            const SizedBox(width: 16),
 
-          // Item Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  menuItem.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
-                if (menuItem.description != null &&
-                    menuItem.description!.isNotEmpty)
+            // Item Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    menuItem.description!,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                const SizedBox(height: 8),
-
-                // Dietary Info
-                if ((menuItem.dietaryInfo ?? '').isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      menuItem.dietaryInfo!,
-                      style: TextStyle(
-                        color: Colors.green[600],
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    menuItem.title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
 
-                // Availability
-                Text(
-                  menuItem.isAvailable ? 'Available' : 'Not Available',
-                  style: TextStyle(
-                    color: menuItem.isAvailable ? Colors.green : Colors.red,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                  const SizedBox(height: 4),
 
-                const SizedBox(height: 8),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+                  if (menuItem.description != null &&
+                      menuItem.description!.isNotEmpty)
                     Text(
-                      menuItem.formattedPrice,
+                      menuItem.description!,
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: TColor.primary,
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                  const SizedBox(height: 8),
+
+                  // Dietary Info
+                  if ((menuItem.dietaryInfo ?? '').isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        menuItem.dietaryInfo!,
+                        style: TextStyle(
+                          color: Colors.green[600],
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                    if (menuItem.isAvailable)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: TColor.primary.withOpacity(0.1),
-                          shape: BoxShape.circle,
+
+                  // Availability
+                  Text(
+                    menuItem.isAvailable ? 'Available' : 'Not Available',
+                    style: TextStyle(
+                      color: menuItem.isAvailable ? Colors.green : Colors.red,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        menuItem.formattedPrice,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: TColor.primary,
                         ),
-                        child: Obx(() {
-                          final isProcessing = cartController
-                              .isItemProcessing('${menuItem.id}_add');
-                          return IconButton(
-                            icon: isProcessing
-                                ? SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          TColor.primary),
-                                    ),
-                                  )
-                                : Icon(
-                                    Icons.add_circle,
-                                    color: TColor.primary,
-                                    size: (cardWidth * 0.10).clamp(18.0, 24.0),
-                                  ),
-                            padding: EdgeInsets.zero,
-                            constraints: BoxConstraints(
-                              minWidth: cardWidth * 0.16,
-                              minHeight: cardWidth * 0.16,
-                            ),
-                            onPressed: isProcessing
-                                ? null
-                                : () async {
-                                    final userController =
-                                        Get.find<UserController>();
-                                    if (!userController.isLoggedIn) {
-                                      Get.snackbar(
-                                        'Login Required',
-                                        'Please login to add items to cart',
-                                        snackPosition: SnackPosition.BOTTOM,
-                                        backgroundColor: Colors.orange,
-                                        colorText: Colors.white,
-                                      );
-                                      return;
-                                    }
-
-                                    try {
-                                      await cartController.addToCart(
-                                        menuItem: menuItem,
-                                        quantity: 1,
-                                        accessToken: userController.accessToken,
-                                      );
-
-                                      // Snackbar shows immediately now
-                                    } catch (e) {
-                                      Get.snackbar(
-                                        'Error',
-                                        'Failed to add item to cart: ${e.toString()}',
-                                        snackPosition: SnackPosition.BOTTOM,
-                                        backgroundColor: Colors.red,
-                                        colorText: Colors.white,
-                                      );
-                                    }
-                                  },
-                          );
-                        }),
                       ),
-                  ],
-                ),
-              ],
+                      if (menuItem.isAvailable)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: TColor.primary.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Obx(() {
+                            final isProcessing = cartController
+                                .isItemProcessing('${menuItem.id}_add');
+                            return IconButton(
+                              icon: isProcessing
+                                  ? SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                TColor.primary),
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.add_circle,
+                                      color: TColor.primary,
+                                      size:
+                                          (cardWidth * 0.10).clamp(18.0, 24.0),
+                                    ),
+                              padding: EdgeInsets.zero,
+                              constraints: BoxConstraints(
+                                minWidth: cardWidth * 0.16,
+                                minHeight: cardWidth * 0.16,
+                              ),
+                              onPressed: isProcessing
+                                  ? null
+                                  : () async {
+                                      final userController =
+                                          Get.find<UserController>();
+                                      if (!userController.isLoggedIn) {
+                                        Get.snackbar(
+                                          'Login Required',
+                                          'Please login to add items to cart',
+                                          snackPosition: SnackPosition.BOTTOM,
+                                          backgroundColor: Colors.orange,
+                                          colorText: Colors.white,
+                                        );
+                                        return;
+                                      }
+
+                                      try {
+                                        await cartController.addToCart(
+                                          menuItem: menuItem,
+                                          quantity: 1,
+                                          accessToken:
+                                              userController.accessToken,
+                                        );
+
+                                        // Snackbar shows immediately now
+                                      } catch (e) {
+                                        Get.snackbar(
+                                          'Error',
+                                          'Failed to add item to cart: ${e.toString()}',
+                                          snackPosition: SnackPosition.BOTTOM,
+                                          backgroundColor: Colors.red,
+                                          colorText: Colors.white,
+                                        );
+                                      }
+                                    },
+                            );
+                          }),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

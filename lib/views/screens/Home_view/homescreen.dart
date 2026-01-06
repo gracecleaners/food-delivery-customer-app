@@ -407,26 +407,21 @@ class _HomePageState extends State<HomePage> {
               ]);
             },
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: media.height * 0.03),
+                  // SizedBox(height: media.height * 0.001),
 
                   // Location and Profile with enhanced styling
                   _buildLocationHeader(),
 
-                  const SizedBox(height: 28),
-
-                  const SizedBox(height: 24),
-
+                  const SizedBox(height: 15),
                   // Categories Widget
                   const CategoriesWidget(),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 15),
 
-                  // Dynamic Promo Banner Widget
-                  // No longer shows loading here - uses cached data
                   PromoBannerWidget(
                     featuredItemsWithPromotions:
                         restaurantController.featuredItemsWithPromotions,
@@ -436,17 +431,17 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 15),
 
                   // Popular Restaurants Widget
                   PopularRestaurantsWidget(),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 15),
 
                   // Featured Menu Items
                   const MenuItemsWidget(),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 15),
                 ],
               ),
             ),

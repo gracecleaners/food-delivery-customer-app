@@ -5,7 +5,6 @@ import 'package:food_delivery_customer/constants/colors.dart';
 import 'package:food_delivery_customer/controller/order_controller.dart';
 import 'package:food_delivery_customer/controller/user_controller.dart';
 import 'package:food_delivery_customer/models/cart.dart';
-import 'package:food_delivery_customer/views/screens/err.dart';
 import 'package:food_delivery_customer/views/screens/order_detail.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -24,12 +23,12 @@ class _OrdersPageState extends State<OrdersPage> {
   @override
   void initState() {
     super.initState();
-    
+
     // Clear notifications when orders page opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _clearNotificationsOnOpen();
     });
-    
+
     // Load orders when page initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadOrders();
@@ -52,18 +51,20 @@ class _OrdersPageState extends State<OrdersPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('My Orders', style: TextStyle(fontWeight: FontWeight.bold),),
+        title: const Text(
+          'My Orders',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: TColor.primary,
         foregroundColor: Colors.white,
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
           onPressed: () {
-            Get.back();
+            Navigator.of(context).pop();
           },
+        ),
       ),
-      ),
-     
       body: Obx(() {
         // Show login prompt if user is not logged in
         if (!_userController.isLoggedIn) {

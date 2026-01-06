@@ -19,6 +19,11 @@ class OrderDetailPage extends StatelessWidget {
         backgroundColor: Colors.white,
         foregroundColor: TColor.primaryText,
         elevation: 0,
+        leading: IconButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            icon: Icon(Icons.arrow_back_ios)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -27,19 +32,19 @@ class OrderDetailPage extends StatelessWidget {
           children: [
             // Order Status Card
             _buildStatusCard(),
-            
+
             const SizedBox(height: 20),
-            
+
             // Order Items
             _buildOrderItems(),
-            
+
             const SizedBox(height: 20),
-            
+
             // Order Summary
             _buildOrderSummary(),
-            
+
             const SizedBox(height: 20),
-            
+
             // Order Information
             _buildOrderInformation(),
           ],
@@ -77,7 +82,8 @@ class OrderDetailPage extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: _getStatusColor(order.status).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -139,82 +145,84 @@ class OrderDetailPage extends StatelessWidget {
   }
 
   Widget _buildOrderItem(OrderItem item) {
-  return Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    child: Row(
-      children: [
-        // Item Image - fixed width
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: Colors.grey[200],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          // Item Image - fixed width
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.grey[200],
+            ),
+            child: item.menuItem.imageUrl != null &&
+                    item.menuItem.imageUrl!.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      item.menuItem.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(Icons.fastfood, color: Colors.grey[400]);
+                      },
+                    ),
+                  )
+                : Icon(Icons.fastfood, color: Colors.grey[400]),
           ),
-          child: item.menuItem.imageUrl != null && item.menuItem.imageUrl!.isNotEmpty
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    item.menuItem.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(Icons.fastfood, color: Colors.grey[400]);
-                    },
+
+          const SizedBox(width: 12),
+
+          // Item Details - use Expanded to take available space
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.menuItem.title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: TColor.primaryText,
                   ),
-                )
-              : Icon(Icons.fastfood, color: Colors.grey[400]),
-        ),
-        
-        const SizedBox(width: 12),
-        
-        // Item Details - use Expanded to take available space
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item.menuItem.title,
+                  maxLines: 2, // Limit to 2 lines
+                  overflow: TextOverflow.ellipsis, // Add ellipsis if too long
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Qty: ${item.quantity}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Item Price - fixed width or use FittedBox
+          Container(
+            constraints:
+                BoxConstraints(minWidth: 80), // Minimum width for price
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '\$${(item.unitPrice * item.quantity).toStringAsFixed(2)}',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: TColor.primaryText,
+                  fontWeight: FontWeight.bold,
+                  color: TColor.primary,
                 ),
-                maxLines: 2, // Limit to 2 lines
-                overflow: TextOverflow.ellipsis, // Add ellipsis if too long
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Qty: ${item.quantity}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ),
-        
-        const SizedBox(width: 12),
-        
-        // Item Price - fixed width or use FittedBox
-        Container(
-          constraints: BoxConstraints(minWidth: 80), // Minimum width for price
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              '\$${(item.unitPrice * item.quantity).toStringAsFixed(2)}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: TColor.primary,
               ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _buildOrderSummary() {
     final subtotal = order.totalAmount;
@@ -248,7 +256,8 @@ class OrderDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _buildSummaryRow('Subtotal', '\$${subtotal.toStringAsFixed(2)}'),
-          _buildSummaryRow('Delivery Fee', '\$${deliveryFee.toStringAsFixed(2)}'),
+          _buildSummaryRow(
+              'Delivery Fee', '\$${deliveryFee.toStringAsFixed(2)}'),
           const Divider(height: 20),
           _buildSummaryRow(
             'Total',
@@ -293,7 +302,8 @@ class OrderDetailPage extends StatelessWidget {
           if (order.dropoffLocation != null)
             _buildInfoRow(
               'Delivery Location',
-              order.dropoffLocation!['address'] ?? order.dropoffLocation!.toString(),
+              order.dropoffLocation!['address'] ??
+                  order.dropoffLocation!.toString(),
             ),
         ],
       ),
@@ -301,69 +311,69 @@ class OrderDetailPage extends StatelessWidget {
   }
 
   Widget _buildSummaryRow(String label, String value, {bool isTotal = false}) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            label,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: isTotal ? 16 : 14,
+                fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+                color: isTotal ? TColor.primaryText : Colors.grey[600],
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            value,
             style: TextStyle(
               fontSize: isTotal ? 16 : 14,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isTotal ? TColor.primaryText : Colors.grey[600],
+              color: isTotal ? TColor.primary : Colors.grey[600],
             ),
-            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: isTotal ? 16 : 14,
-            fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            color: isTotal ? TColor.primary : Colors.grey[600],
-          ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _buildInfoRow(String label, String value) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Flexible(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
-            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: TColor.primaryText,
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: TColor.primaryText,
+              ),
+              textAlign: TextAlign.right,
+              // overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.right,
-            // overflow: TextOverflow.ellipsis,
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {

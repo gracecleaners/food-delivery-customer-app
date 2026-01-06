@@ -76,7 +76,7 @@ class _AllRestaurantsPageState extends State<AllRestaurantsPage> {
                   ),
                 ),
                 bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(110),
+                  preferredSize: const Size.fromHeight(65),
                   child: Column(
                     children: [
                       // Search Field

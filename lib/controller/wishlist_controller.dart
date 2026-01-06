@@ -121,7 +121,7 @@ class WishlistController extends GetxController {
 
       // 3. Show immediate feedback with proper message
       if (wasInWishlist) {
-        SnackbarService.showInfo('Removed from wishlist');
+        SnackbarService.showWarning('Removed from wishlist');
       } else {
         SnackbarService.showSuccess('Added to wishlist');
       }
