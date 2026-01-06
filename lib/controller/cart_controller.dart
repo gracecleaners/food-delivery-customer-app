@@ -1,4 +1,5 @@
 import 'package:food_delivery_customer/models/menu_item.dart';
+import 'package:food_delivery_customer/utils/snackbar.dart';
 import 'package:get/get.dart';
 import 'package:food_delivery_customer/services/api_service.dart';
 import 'package:food_delivery_customer/models/cart.dart';
@@ -139,88 +140,90 @@ void onInit() {
   }
 
   Future<bool> addToCart({
-    required MenuItem menuItem,
-    required int quantity,
-    required String? accessToken,
-  }) async {
-    final itemKey = '${menuItem.id}_add';
+  required MenuItem menuItem,
+  required int quantity,
+  required String? accessToken,
+}) async {
+  final itemKey = '${menuItem.id}_add';
 
-    try {
-      _setItemProcessing(itemKey, true);
-      isLoading.value = true; // Set loading state
-      error.value = '';
+  try {
+    _setItemProcessing(itemKey, true);
+    error.value = '';
 
-      // 1. FIRST: Add to local cart for immediate UI update
-      await _addToLocalCart(menuItem: menuItem, quantity: quantity);
-
-      // 2. Add a small delay to ensure smooth UI transition (2 seconds as requested)
-      // await Future.delayed(const Duration(seconds: 2));
-
-      // 3. THEN: Sync with backend in background if we have access token
-      if (accessToken != null && accessToken.isNotEmpty) {
-        _syncWithBackend(accessToken: accessToken);
-      }
-      Get.snackbar('Cart', '$menuItem successfully added to cart');
-     
-      return true;
-    } catch (e) {
-      error.value = e.toString();
-      // If local add failed, revert any changes
-      _revertLocalChanges();
-      return false;
-    } finally {
-      _setItemProcessing(itemKey, false);
-      isLoading.value = false; // Clear loading state
+    print('🛒 Adding ${menuItem.title} to cart, quantity: $quantity');
+    
+    // 1. FIRST: Add to local cart for immediate UI update
+    await _addToLocalCart(menuItem: menuItem, quantity: quantity);
+    
+    print('🛒 Local cart updated. Item count: $cartItemCount');
+    
+    // 2. Show immediate feedback
+    SnackbarUtils.showSuccess('${menuItem.title} added to cart');
+    
+    // 3. THEN: Sync with backend in background if we have access token
+    if (accessToken != null && accessToken.isNotEmpty) {
+      _syncWithBackend(accessToken: accessToken);
     }
+    
+    return true;
+  } catch (e) {
+    error.value = e.toString();
+    // If local add failed, revert any changes
+    _revertLocalChanges();
+    SnackbarUtils.showError('Failed to add to cart: ${e.toString()}');
+    return false;
+  } finally {
+    _setItemProcessing(itemKey, false);
   }
+}
 
   // Add item to local cart (immediate)
   Future<void> _addToLocalCart({
-    required MenuItem menuItem,
-    required int quantity,
-  }) async {
-    // Create or get local cart
-    if (_localCart.value == null) {
-      _localCart.value = _createLocalCart();
-    }
-
-    final existingItemIndex = _localCart.value!.items
-        .indexWhere((item) => item.menuItem.id == menuItem.id);
-
-    if (existingItemIndex != -1) {
-      // Update existing item
-      final existingItem = _localCart.value!.items[existingItemIndex];
-      final newQuantity = existingItem.quantity + quantity;
-      final newTotalPrice = menuItem.price * newQuantity;
-
-      _localCart.value!.items[existingItemIndex] = CartItem(
-        id: existingItem.id,
-        menuItem: menuItem,
-        quantity: newQuantity,
-        totalPrice: newTotalPrice,
-      );
-    } else {
-      // Add new item
-      final newItem = _createLocalCartItem(
-        menuItem: menuItem,
-        quantity: quantity,
-      );
-      _localCart.value!.items.add(newItem);
-    }
-
-    // Recalculate total
-    _recalculateLocalCartTotal();
-
-    // Save to local storage
-    _saveLocalCart();
-
-    // Force UI update
-    _localCart.refresh();
-
-    print(
-        '🛒 Local cart updated: ${_localCart.value!.items.length} items, Total: \$${_localCart.value!.totalPrice}');
+  required MenuItem menuItem,
+  required int quantity,
+}) async {
+  // Create or get local cart
+  if (_localCart.value == null) {
+    _localCart.value = _createLocalCart();
   }
 
+  final existingItemIndex = _localCart.value!.items
+      .indexWhere((item) => item.menuItem.id == menuItem.id);
+
+  if (existingItemIndex != -1) {
+    // Update existing item
+    final existingItem = _localCart.value!.items[existingItemIndex];
+    final newQuantity = existingItem.quantity + quantity;
+    final newTotalPrice = menuItem.price * newQuantity;
+
+    _localCart.value!.items[existingItemIndex] = CartItem(
+      id: existingItem.id,
+      menuItem: menuItem,
+      quantity: newQuantity,
+      totalPrice: newTotalPrice,
+    );
+  } else {
+    // Add new item
+    final newItem = _createLocalCartItem(
+      menuItem: menuItem,
+      quantity: quantity,
+    );
+    _localCart.value!.items.add(newItem);
+  }
+
+  // Recalculate total
+  _recalculateLocalCartTotal();
+
+  // Save to local storage
+  _saveLocalCart();
+
+  // Force UI update - CRITICAL for badge
+  _localCart.refresh();
+  update(); // This notifies GetBuilder widgets
+
+  print('🛒 Local cart updated: ${_localCart.value!.items.length} items, Total: \$${_localCart.value!.totalPrice}');
+  print('🛒 Badge should show: $cartItemCount items');
+}
   // Recalculate local cart total
   void _recalculateLocalCartTotal() {
     if (_localCart.value != null) {
