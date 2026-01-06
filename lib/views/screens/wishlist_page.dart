@@ -1,5 +1,7 @@
 // views/screens/wishlist_page.dart
 import 'package:flutter/material.dart';
+import 'package:food_delivery_customer/services/snackbar_service.dart';
+import 'package:food_delivery_customer/utils/context_snackbar.dart';
 import 'package:food_delivery_customer/views/screens/all_menu_items.dart';
 import 'package:food_delivery_customer/views/screens/get_started.dart';
 import 'package:get/get.dart';
@@ -249,7 +251,7 @@ class WishlistPage extends StatelessWidget {
     );
   }
 
-  Widget _buildWishlistItemCard(WishlistItem wishlistItem) {
+  Widget _buildWishlistItemCard (WishlistItem wishlistItem) {
     final menuItem = wishlistItem.menuItem;
 
     return Container(
@@ -358,14 +360,9 @@ class WishlistPage extends StatelessWidget {
                                     accessToken: _userController
                                         .accessToken, // Remove underscore
                                   );
+                                  SnackbarService.showSuccess('Added to cart');
                                 } catch (e) {
-                                  Get.snackbar(
-                                    'Error',
-                                    'Failed to add item to cart: ${e.toString()}',
-                                    snackPosition: SnackPosition.BOTTOM,
-                                    backgroundColor: Colors.red,
-                                    colorText: Colors.white,
-                                  );
+                                   SnackbarService.showError('Failed to add item to cart: ${e.toString()}');
                                 }
                               },
                               child: const Text(

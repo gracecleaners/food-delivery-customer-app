@@ -5,6 +5,7 @@ import 'package:food_delivery_customer/controller/location_controller.dart';
 import 'package:food_delivery_customer/controller/order_controller.dart';
 import 'package:food_delivery_customer/controller/user_controller.dart';
 import 'package:food_delivery_customer/models/cart.dart';
+import 'package:food_delivery_customer/utils/context_snackbar.dart';
 import 'package:food_delivery_customer/views/screens/all_menu_items.dart';
 import 'package:food_delivery_customer/views/screens/location_selection.dart';
 import 'package:get/get.dart';
@@ -566,6 +567,8 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
+
+
   Future<void> _proceedToCheckout() async {
     final cartController = Get.find<CartController>();
     final locationController = Get.find<LocationController>();
@@ -578,13 +581,8 @@ class _CartPageState extends State<CartPage> {
 
       // Check if delivery location is selected
       if (locationController.selectedLocation == null) {
-        Get.snackbar(
-          'Location Required',
-          'Please select a delivery location',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-        );
+        ContextSnackbar.showWarning(
+            context, 'Please select a delivery location');
 
         // Navigate to location selection
         final selectedLocation =
@@ -598,14 +596,14 @@ class _CartPageState extends State<CartPage> {
 
       // Validate cart
       if (cartController.cart == null) {
-        Get.snackbar('Error', 'Cart is empty');
+        ContextSnackbar.showError(context, 'Cart is empty');
         cartController.isCheckingOut.value = false;
         return;
       }
 
       final cartId = GetStorage().read('current_cart_id');
       if (cartId == null) {
-        Get.snackbar('Error', 'No cart found');
+        ContextSnackbar.showError(context, 'No cart found');
         cartController.isCheckingOut.value = false;
         return;
       }
@@ -623,13 +621,7 @@ class _CartPageState extends State<CartPage> {
         Get.offAll(() => OrderConfirmationPage(order: order));
       }
     } catch (e) {
-      Get.snackbar(
-        'Checkout Failed',
-        'Failed to process checkout: ${e.toString()}',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      ContextSnackbar.showError(context, 'Checkout Failed: ${e.toString()}');
     } finally {
       // Ensure loading state is cleared
       cartController.isCheckingOut.value = false;

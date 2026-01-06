@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:food_delivery_customer/controller/user_controller.dart';
 import 'package:food_delivery_customer/models/menu_item.dart';
-import 'package:food_delivery_customer/utils/snackbar.dart';
+import 'package:food_delivery_customer/services/snackbar_service.dart';
 import 'package:get/get.dart';
 import 'package:food_delivery_customer/services/api_service.dart';
 import 'package:food_delivery_customer/models/wishlist.dart';
@@ -11,13 +11,15 @@ class WishlistController extends GetxController {
   final ApiService _apiService = Get.find();
 
   final Rx<Wishlist?> _wishlist = Rx<Wishlist?>(null);
-  final Rx<Wishlist?> _localWishlist = Rx<Wishlist?>(null); // Local wishlist for immediate UI
+  final Rx<Wishlist?> _localWishlist =
+      Rx<Wishlist?>(null); // Local wishlist for immediate UI
   final RxBool isLoading = false.obs;
   final RxBool isSyncing = false.obs; // Track sync status
   final RxString error = ''.obs;
   final RxMap<String, bool> _itemProcessingStates = <String, bool>{}.obs;
 
-  Wishlist? get wishlist => _localWishlist.value ?? _wishlist.value; // Prefer local for display
+  Wishlist? get wishlist =>
+      _localWishlist.value ?? _wishlist.value; // Prefer local for display
   List<WishlistItem> get wishlistItems => wishlist?.items ?? [];
   int get wishlistItemCount => wishlistItems.length;
   bool get hasItems => wishlistItems.isNotEmpty;
@@ -34,7 +36,8 @@ class WishlistController extends GetxController {
     if (localWishlistData != null) {
       try {
         _localWishlist.value = Wishlist.fromJson(localWishlistData);
-        print('❤️ Local wishlist loaded: ${_localWishlist.value?.items.length} items');
+        print(
+            '❤️ Local wishlist loaded: ${_localWishlist.value?.items.length} items');
       } catch (e) {
         print('❌ Error loading local wishlist: $e');
         _clearLocalWishlist();
@@ -87,59 +90,60 @@ class WishlistController extends GetxController {
   // FAST LOCAL TOGGLE WISHLIST - Immediate UI update
   // In WishlistController, update the toggleWishlist method:
 
-Future<void> toggleWishlist({
-  required MenuItem menuItem,
-  required String? accessToken,
-}) async {
-  final itemKey = '${menuItem.id}_toggle';
-  
-  try {
-    _setItemProcessing(itemKey, true);
-    error.value = '';
+// In WishlistController, update the toggleWishlist method:
 
-    // Check if user is logged in
-    final userController = Get.find<UserController>();
-    if (!userController.isLoggedIn) {
-      SnackbarUtils.showError('Please login to manage wishlist');
-      return;
-    }
+  Future<void> toggleWishlist({
+    required MenuItem menuItem,
+    required String? accessToken,
+  }) async {
+    final itemKey = '${menuItem.id}_toggle';
 
-    // 1. FIRST: Check current state
-    final wasInWishlist = isItemInWishlist(menuItem.id);
-    
-    // 2. Toggle locally for immediate UI update
-    if (wasInWishlist) {
-      await _removeFromLocalWishlist(menuItemId: menuItem.id);
-    } else {
-      await _addToLocalWishlist(menuItem: menuItem);
-    }
-    
-    // 3. Show immediate feedback with proper message
-    if (wasInWishlist) {
-      SnackbarUtils.showInfo('Removed from wishlist');
-    } else {
-      SnackbarUtils.showSuccess('Added to wishlist');
-    }
-    
-    // 4. THEN: Sync with backend in background
-    if (accessToken != null && accessToken.isNotEmpty) {
-      _syncWithBackend(
-        menuItem: menuItem,
-        wasInWishlist: wasInWishlist,
-        accessToken: accessToken,
-      );
-    }
+    try {
+      _setItemProcessing(itemKey, true);
+      error.value = '';
 
-  } catch (e) {
-    error.value = e.toString();
-    // If local toggle failed, revert any changes
-    _revertLocalChanges();
-    SnackbarUtils.showError('Failed to update wishlist');
-    rethrow;
-  } finally {
-    _setItemProcessing(itemKey, false);
+      // Check if user is logged in
+      final userController = Get.find<UserController>();
+      if (!userController.isLoggedIn) {
+        SnackbarService.showError('Please login to manage wishlist');
+        return;
+      }
+
+      // 1. FIRST: Check current state
+      final wasInWishlist = isItemInWishlist(menuItem.id);
+
+      // 2. Toggle locally for immediate UI update
+      if (wasInWishlist) {
+        await _removeFromLocalWishlist(menuItemId: menuItem.id);
+      } else {
+        await _addToLocalWishlist(menuItem: menuItem);
+      }
+
+      // 3. Show immediate feedback with proper message
+      if (wasInWishlist) {
+        SnackbarService.showInfo('Removed from wishlist');
+      } else {
+        SnackbarService.showSuccess('Added to wishlist');
+      }
+
+      // 4. THEN: Sync with backend in background
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _syncWithBackend(
+          menuItem: menuItem,
+          wasInWishlist: wasInWishlist,
+          accessToken: accessToken,
+        );
+      }
+    } catch (e) {
+      error.value = e.toString();
+      // If local toggle failed, revert any changes
+      _revertLocalChanges();
+      SnackbarService.showError('Failed to update wishlist');
+      rethrow;
+    } finally {
+      _setItemProcessing(itemKey, false);
+    }
   }
-}
 
   // Add item to local wishlist (immediate)
   Future<void> _addToLocalWishlist({
@@ -151,22 +155,22 @@ Future<void> toggleWishlist({
     }
 
     // Check if item already exists locally
-    final existingItemIndex = _localWishlist.value!.items.indexWhere(
-      (item) => item.menuItem.id == menuItem.id
-    );
+    final existingItemIndex = _localWishlist.value!.items
+        .indexWhere((item) => item.menuItem.id == menuItem.id);
 
     if (existingItemIndex == -1) {
       // Add new item
       final newItem = _createLocalWishlistItem(menuItem: menuItem);
       _localWishlist.value!.items.add(newItem);
-      
+
       // Save to local storage
       _saveLocalWishlist();
-      
+
       // Force UI update
       _localWishlist.refresh();
-      
-      print('❤️ Local wishlist updated: ${_localWishlist.value!.items.length} items');
+
+      print(
+          '❤️ Local wishlist updated: ${_localWishlist.value!.items.length} items');
     }
   }
 
@@ -176,66 +180,66 @@ Future<void> toggleWishlist({
   }) async {
     if (_localWishlist.value == null) return;
 
-    _localWishlist.value!.items.removeWhere((item) => item.menuItem.id == menuItemId);
-    
+    _localWishlist.value!.items
+        .removeWhere((item) => item.menuItem.id == menuItemId);
+
     // Save to local storage
     _saveLocalWishlist();
-    
+
     // Force UI update
     _localWishlist.refresh();
-    
-    print('❤️ Local wishlist updated: ${_localWishlist.value!.items.length} items');
+
+    print(
+        '❤️ Local wishlist updated: ${_localWishlist.value!.items.length} items');
   }
 
+  Future<void> _syncWithBackend({
+    required MenuItem menuItem,
+    required bool wasInWishlist,
+    required String accessToken,
+  }) async {
+    try {
+      isSyncing.value = true;
+      print('🔄 Syncing wishlist with backend...');
 
+      if (wasInWishlist) {
+        // Remove from backend
+        await _apiService.delete('wishlists/remove/${menuItem.id}/');
+        print('✅ Removed from backend wishlist: ${menuItem.title}');
+      } else {
+        // Add to backend
+        await _apiService.post('wishlists/add/', {
+          'menu_item_id': menuItem.id,
+        });
+        print('✅ Added to backend wishlist: ${menuItem.title}');
+      }
 
-Future<void> _syncWithBackend({
-  required MenuItem menuItem,
-  required bool wasInWishlist,
-  required String accessToken,
-}) async {
-  try {
-    isSyncing.value = true;
-    print('🔄 Syncing wishlist with backend...');
-
-    if (wasInWishlist) {
-      // Remove from backend
-      await _apiService.delete('wishlists/remove/${menuItem.id}/');
-      print('✅ Removed from backend wishlist: ${menuItem.title}');
-    } else {
-      // Add to backend
-      await _apiService.post('wishlists/add/', {
-        'menu_item_id': menuItem.id,
-      });
-      print('✅ Added to backend wishlist: ${menuItem.title}');
-    }
-
-    // Refresh remote wishlist to get updated data
-    await loadWishlist(accessToken);
-    
-    // Merge local wishlist with remote wishlist
-    await _mergeWishlists();
-    
-    print('✅ Wishlist sync completed');
-  } catch (e) {
-    print('❌ Wishlist sync failed: $e');
-    
-    // Handle specific errors
-    if (e.toString().contains('already in wishlist')) {
-      print('⚠️ Item already in backend wishlist, refreshing state...');
+      // Refresh remote wishlist to get updated data
       await loadWishlist(accessToken);
+
+      // Merge local wishlist with remote wishlist
       await _mergeWishlists();
-    } else if (e.toString().contains('not found') || e.toString().contains('404')) {
-      print('⚠️ Item not found on backend, removing from local');
-      await _removeFromLocalWishlist(menuItemId: menuItem.id);
-      SnackbarUtils.showInfo('Item not available anymore');
-    } else {
-      SnackbarUtils.showError('Failed to sync wishlist');
+
+      print('✅ Wishlist sync completed');
+    } catch (e) {
+      print('❌ Wishlist sync failed: $e');
+
+      // Handle specific errors
+      if (e.toString().contains('already in wishlist')) {
+        print('⚠️ Item already in backend wishlist, refreshing state...');
+        await loadWishlist(accessToken);
+        await _mergeWishlists();
+      } else if (e.toString().contains('not found') ||
+          e.toString().contains('404')) {
+        print('⚠️ Item not found on backend, removing from local');
+        await _removeFromLocalWishlist(menuItemId: menuItem.id);
+      } else {
+        SnackbarService.showError('Failed to sync wishlist');
+      }
+    } finally {
+      isSyncing.value = false;
     }
-  } finally {
-    isSyncing.value = false;
   }
-}
 
   // Merge local and remote wishlists
   Future<void> _mergeWishlists() async {
@@ -313,7 +317,8 @@ Future<void> _syncWithBackend({
                     price: 0.0,
                     isAvailable: false,
                     category: 0,
-                    images: [], promotions: [],
+                    images: [],
+                    promotions: [],
                   ),
                   addedAt: DateTime.now(),
                 );
@@ -334,22 +339,22 @@ Future<void> _syncWithBackend({
         } else {
           remoteWishlist = null;
         }
-      }
-      else {
-        print('🛍️ Unexpected wishlist response format: ${response.runtimeType}');
+      } else {
+        print(
+            '🛍️ Unexpected wishlist response format: ${response.runtimeType}');
         remoteWishlist = null;
       }
 
       _wishlist.value = remoteWishlist;
-      
+
       // Merge with local wishlist
       if (remoteWishlist != null) {
         _localWishlist.value = remoteWishlist;
         _saveLocalWishlist();
       }
-      
-      print('🛍️ Wishlist loaded successfully. Item count: ${wishlistItemCount}');
-      
+
+      print(
+          '🛍️ Wishlist loaded successfully. Item count: ${wishlistItemCount}');
     } catch (e) {
       error.value = 'Error loading wishlist: $e';
       print('🛍️ Error loading wishlist: $e');
@@ -369,45 +374,44 @@ Future<void> _syncWithBackend({
 
   // In WishlistController, update the removeFromWishlist method:
 
-Future<void> removeFromWishlist({
-  required int menuItemId,
-  required String? accessToken,
-}) async {
-  try {
-    // Instead of creating a temp menu item, find the actual menu item from the wishlist
-    final wishlistItem = wishlistItems.firstWhereOrNull(
-      (item) => item.menuItem.id == menuItemId
-    );
-    
-    if (wishlistItem != null) {
-      // Use the actual menu item from the wishlist
-      await toggleWishlist(
-        menuItem: wishlistItem.menuItem,
-        accessToken: accessToken,
-      );
-    } else {
-      // Fallback: create a minimal menu item if not found
-      final tempMenuItem = MenuItem(
-        id: menuItemId,
-        title: 'Item',
-        price: 0.0,
-        isAvailable: true,
-        category: 0,
-        images: [], 
-        promotions: [],
-      );
-      
-      await toggleWishlist(
-        menuItem: tempMenuItem,
-        accessToken: accessToken,
-      );
+  Future<void> removeFromWishlist({
+    required int menuItemId,
+    required String? accessToken,
+  }) async {
+    try {
+      // Instead of creating a temp menu item, find the actual menu item from the wishlist
+      final wishlistItem = wishlistItems
+          .firstWhereOrNull((item) => item.menuItem.id == menuItemId);
+
+      if (wishlistItem != null) {
+        // Use the actual menu item from the wishlist
+        await toggleWishlist(
+          menuItem: wishlistItem.menuItem,
+          accessToken: accessToken,
+        );
+      } else {
+        // Fallback: create a minimal menu item if not found
+        final tempMenuItem = MenuItem(
+          id: menuItemId,
+          title: 'Item',
+          price: 0.0,
+          isAvailable: true,
+          category: 0,
+          images: [],
+          promotions: [],
+        );
+
+        await toggleWishlist(
+          menuItem: tempMenuItem,
+          accessToken: accessToken,
+        );
+      }
+    } catch (e) {
+      error.value = e.toString();
+      SnackbarService.showError('Failed to remove from wishlist');
+      rethrow;
     }
-  } catch (e) {
-    error.value = e.toString();
-    SnackbarUtils.showError('Failed to remove from wishlist');
-    rethrow;
   }
-}
 
   bool isItemInWishlist(int menuItemId) {
     return wishlistItems.any((item) => item.menuItem.id == menuItemId);

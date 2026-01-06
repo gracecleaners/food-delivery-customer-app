@@ -1,5 +1,5 @@
 import 'package:food_delivery_customer/models/menu_item.dart';
-import 'package:food_delivery_customer/utils/snackbar.dart';
+import 'package:food_delivery_customer/services/snackbar_service.dart';
 import 'package:get/get.dart';
 import 'package:food_delivery_customer/services/api_service.dart';
 import 'package:food_delivery_customer/models/cart.dart';
@@ -139,7 +139,9 @@ void onInit() {
     );
   }
 
-  Future<bool> addToCart({
+  // In CartController, update the addToCart method:
+
+Future<bool> addToCart({
   required MenuItem menuItem,
   required int quantity,
   required String? accessToken,
@@ -158,7 +160,7 @@ void onInit() {
     print('🛒 Local cart updated. Item count: $cartItemCount');
     
     // 2. Show immediate feedback
-    SnackbarUtils.showSuccess('${menuItem.title} added to cart');
+    SnackbarService.showSuccess('${menuItem.title} added to cart');
     
     // 3. THEN: Sync with backend in background if we have access token
     if (accessToken != null && accessToken.isNotEmpty) {
@@ -170,7 +172,7 @@ void onInit() {
     error.value = e.toString();
     // If local add failed, revert any changes
     _revertLocalChanges();
-    SnackbarUtils.showError('Failed to add to cart: ${e.toString()}');
+    SnackbarService.showError('Failed to add to cart: ${e.toString()}');
     return false;
   } finally {
     _setItemProcessing(itemKey, false);
