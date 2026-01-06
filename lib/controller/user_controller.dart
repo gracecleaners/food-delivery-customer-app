@@ -459,11 +459,31 @@ Future<void> registerGoogleUser(Map<String, dynamic> registrationData) async {
   }
 
   Future<void> refreshAuthStateFromStorage() async {
+  try {
+    print('🔄 Refreshing auth state from storage...');
+    
+    // First update token state
     await _initializeToken(); 
+    
+    // Then get cached user
     final cachedUser = await _tokenService.getUserData();
-    if (cachedUser != null) _user.value = cachedUser;
-    print('🔄 Auth state refreshed from storage: isLoggedIn=$isLoggedIn');
+    if (cachedUser != null) {
+      _user.value = cachedUser;
+      print('✅ User loaded from cache: ${_user.value?.email}');
+    }
+    
+    print('🔄 Auth state refreshed: isLoggedIn=$isLoggedIn');
+    
+    // If we're logged in, initialize all user services
+    if (isLoggedIn) {
+      print('🔄 Initializing user services after auth refresh...');
+      await _initializeUserServices();
+    }
+  } catch (e) {
+    print('❌ Error refreshing auth state: $e');
   }
+}
+
 
   Future<void> registerUser(Map<String, dynamic> userData) async {
     try {
@@ -528,33 +548,37 @@ Future<void> registerGoogleUser(Map<String, dynamic> registrationData) async {
     }
   }
 
-  Future<void> loginWithEmail(String email, String password) async {
-    try {
-      isLoading.value = true;
-      error.value = '';
+Future<void> loginWithEmail(String email, String password) async {
+  try {
+    isLoading.value = true;
+    error.value = '';
 
-      final response = await _apiService.post('users/auth/login/', {
-        'email': email,
-        'password': password,
-      });
+    final response = await _apiService.post('users/auth/login/', {
+      'email': email,
+      'password': password,
+    });
 
-      await _tokenService.saveTokens(response);
-      await _initializeToken();
-      await getProfile();
+    // Save tokens and update local state
+    await _tokenService.saveTokens(response);
+    await _initializeToken(); // This updates _accessToken
+    
+    // IMPORTANT: Get user profile to update _user.value
+    await getProfile();
 
-      print('✅ Login successful');
-      
-      await _initializeUserServices();
-      
-      Get.offAllNamed('/home');
-    } catch (e) {
-      error.value = e.toString();
-      rethrow;
-    } finally {
-      isLoading.value = false;
-    }
+    print('✅ Login successful - Token: ${_accessToken.value.isNotEmpty ? "present" : "empty"}');
+    
+    // CRITICAL: Initialize all user-dependent services AFTER login
+    await _initializeUserServices();
+    
+    // Navigate to home
+    Get.offAllNamed('/home');
+  } catch (e) {
+    error.value = e.toString();
+    rethrow;
+  } finally {
+    isLoading.value = false;
   }
-
+}
   String _getGoogleSignInError(dynamic error) {
     final errorString = error.toString();
     
