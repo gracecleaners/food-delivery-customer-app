@@ -6,16 +6,19 @@ import 'package:get_storage/get_storage.dart';
 
 class CartController extends GetxController {
   final ApiService _apiService = Get.find();
-  
+
   final Rx<Cart?> _cart = Rx<Cart?>(null);
-  final Rx<Cart?> _localCart = Rx<Cart?>(null); // Local cart for immediate UI updates
+  final Rx<Cart?> _localCart =
+      Rx<Cart?>(null); // Local cart for immediate UI updates
   final RxBool isLoading = false.obs;
   final RxBool isSyncing = false.obs; // Track sync status
   final RxString error = ''.obs;
 
-  Cart? get cart => _localCart.value ?? _cart.value; // Prefer local cart for display
+  Cart? get cart =>
+      _localCart.value ?? _cart.value; // Prefer local cart for display
   List<CartItem> get cartItems => cart?.items ?? [];
-  int get cartItemCount => cartItems.fold(0, (sum, item) => sum + item.quantity);
+  int get cartItemCount =>
+      cartItems.fold(0, (sum, item) => sum + item.quantity);
   double get cartTotal => cart?.totalPrice ?? 0.0;
   bool get hasItems => cartItems.isNotEmpty;
   final RxMap<String, bool> _itemProcessingStates = <String, bool>{}.obs;
@@ -31,7 +34,7 @@ class CartController extends GetxController {
 
       // Simulate some processing time (you can remove this in production)
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       // Your existing checkout logic would go here
       // For now, just return success
       return true;
@@ -49,15 +52,15 @@ class CartController extends GetxController {
     _initializeLocalCart();
   }
 
-void disposeSnackbars() {
-  try {
-    if (Get.isSnackbarOpen) {
-      Get.closeAllSnackbars();
+  void disposeSnackbars() {
+    try {
+      if (Get.isSnackbarOpen) {
+        Get.closeAllSnackbars();
+      }
+    } catch (e) {
+      print('Error closing snackbars: $e');
     }
-  } catch (e) {
-    print('Error closing snackbars: $e');
   }
-}
 
   // Initialize local cart from storage
   void _initializeLocalCart() {
@@ -115,41 +118,41 @@ void disposeSnackbars() {
     );
   }
 
- Future<bool> addToCart({
-  required MenuItem menuItem,
-  required int quantity,
-  required String? accessToken,
-}) async {
-  final itemKey = '${menuItem.id}_add';
-  
-  try {
-    _setItemProcessing(itemKey, true);
-    isLoading.value = true; // Set loading state
-    error.value = '';
+  Future<bool> addToCart({
+    required MenuItem menuItem,
+    required int quantity,
+    required String? accessToken,
+  }) async {
+    final itemKey = '${menuItem.id}_add';
 
-    // 1. FIRST: Add to local cart for immediate UI update
-    await _addToLocalCart(menuItem: menuItem, quantity: quantity);
-    
-    // 2. Add a small delay to ensure smooth UI transition (2 seconds as requested)
-    await Future.delayed(const Duration(seconds: 2));
-    
-    // 3. THEN: Sync with backend in background if we have access token
-    if (accessToken != null && accessToken.isNotEmpty) {
-      _syncWithBackend(accessToken: accessToken);
+    try {
+      _setItemProcessing(itemKey, true);
+      isLoading.value = true; // Set loading state
+      error.value = '';
+
+      // 1. FIRST: Add to local cart for immediate UI update
+      await _addToLocalCart(menuItem: menuItem, quantity: quantity);
+
+      // 2. Add a small delay to ensure smooth UI transition (2 seconds as requested)
+      await Future.delayed(const Duration(seconds: 2));
+
+      // 3. THEN: Sync with backend in background if we have access token
+      if (accessToken != null && accessToken.isNotEmpty) {
+        _syncWithBackend(accessToken: accessToken);
+      }
+      Get.snackbar('Cart', '$menuItem successfully added to cart');
+     
+      return true;
+    } catch (e) {
+      error.value = e.toString();
+      // If local add failed, revert any changes
+      _revertLocalChanges();
+      return false;
+    } finally {
+      _setItemProcessing(itemKey, false);
+      isLoading.value = false; // Clear loading state
     }
-
-    // Don't show snackbar here anymore - let the UI handle it
-    return true;
-  } catch (e) {
-    error.value = e.toString();
-    // If local add failed, revert any changes
-    _revertLocalChanges();
-    return false;
-  } finally {
-    _setItemProcessing(itemKey, false);
-    isLoading.value = false; // Clear loading state
   }
-}
 
   // Add item to local cart (immediate)
   Future<void> _addToLocalCart({
@@ -161,16 +164,15 @@ void disposeSnackbars() {
       _localCart.value = _createLocalCart();
     }
 
-    final existingItemIndex = _localCart.value!.items.indexWhere(
-      (item) => item.menuItem.id == menuItem.id
-    );
+    final existingItemIndex = _localCart.value!.items
+        .indexWhere((item) => item.menuItem.id == menuItem.id);
 
     if (existingItemIndex != -1) {
       // Update existing item
       final existingItem = _localCart.value!.items[existingItemIndex];
       final newQuantity = existingItem.quantity + quantity;
       final newTotalPrice = menuItem.price * newQuantity;
-      
+
       _localCart.value!.items[existingItemIndex] = CartItem(
         id: existingItem.id,
         menuItem: menuItem,
@@ -188,20 +190,22 @@ void disposeSnackbars() {
 
     // Recalculate total
     _recalculateLocalCartTotal();
-    
+
     // Save to local storage
     _saveLocalCart();
-    
+
     // Force UI update
     _localCart.refresh();
-    
-    print('🛒 Local cart updated: ${_localCart.value!.items.length} items, Total: \$${_localCart.value!.totalPrice}');
+
+    print(
+        '🛒 Local cart updated: ${_localCart.value!.items.length} items, Total: \$${_localCart.value!.totalPrice}');
   }
 
   // Recalculate local cart total
   void _recalculateLocalCartTotal() {
     if (_localCart.value != null) {
-      final total = _localCart.value!.items.fold(0.0, (sum, item) => sum + item.totalPrice);
+      final total = _localCart.value!.items
+          .fold(0.0, (sum, item) => sum + item.totalPrice);
       _localCart.value = _localCart.value!.copyWith(totalPrice: total);
     }
   }
@@ -237,10 +241,11 @@ void disposeSnackbars() {
                 'qty': localItem.quantity,
               },
             );
-            
+
             print('✅ Synced item: ${localItem.menuItem.title}');
           } catch (e) {
-            print('❌ Failed to sync item: ${localItem.menuItem.title}, Error: $e');
+            print(
+                '❌ Failed to sync item: ${localItem.menuItem.title}, Error: $e');
             // Continue with other items even if one fails
           }
         }
@@ -248,10 +253,10 @@ void disposeSnackbars() {
 
       // Refresh remote cart to get updated data
       await getCart();
-      
+
       // Merge local cart with remote cart
       await _mergeCarts();
-      
+
       print('✅ Cart sync completed');
     } catch (e) {
       print('❌ Cart sync failed: $e');
@@ -283,18 +288,18 @@ void disposeSnackbars() {
     required String? accessToken, // Changed to nullable
   }) async {
     final itemKey = '${itemId}_update';
-    
+
     try {
       _setItemProcessing(itemKey, true);
 
       // 1. FIRST: Update locally
       await _updateLocalQuantity(itemId: itemId, quantity: quantity);
-      
+
       // 2. THEN: Sync with backend if we have access token
       if (accessToken != null && accessToken.isNotEmpty) {
-        _syncQuantityWithBackend(itemId: itemId, quantity: quantity, accessToken: accessToken);
+        _syncQuantityWithBackend(
+            itemId: itemId, quantity: quantity, accessToken: accessToken);
       }
-
     } catch (e) {
       error.value = e.toString();
       _revertLocalChanges();
@@ -311,8 +316,9 @@ void disposeSnackbars() {
   }) async {
     if (_localCart.value == null) return;
 
-    final itemIndex = _localCart.value!.items.indexWhere((item) => item.id == itemId);
-    
+    final itemIndex =
+        _localCart.value!.items.indexWhere((item) => item.id == itemId);
+
     if (itemIndex != -1) {
       if (quantity <= 0) {
         // Remove item
@@ -327,7 +333,7 @@ void disposeSnackbars() {
           totalPrice: item.menuItem.price * quantity,
         );
       }
-      
+
       _recalculateLocalCartTotal();
       _saveLocalCart();
       _localCart.refresh();
@@ -354,7 +360,7 @@ void disposeSnackbars() {
             {'qty': quantity},
           );
         }
-        
+
         await getCart(); // Refresh remote cart
         await _mergeCarts(); // Update local cart with remote data
       } catch (e) {
@@ -370,20 +376,20 @@ void disposeSnackbars() {
     required String? accessToken, // Changed to nullable
   }) async {
     final itemKey = '${itemId}_remove';
-    
+
     try {
       _setItemProcessing(itemKey, true);
 
       // 1. FIRST: Remove locally
       await _removeFromLocalCart(itemId: itemId);
-      
+
       // 2. THEN: Sync with backend if we have access token
       if (accessToken != null && accessToken.isNotEmpty) {
         _syncRemoveWithBackend(itemId: itemId, accessToken: accessToken);
       }
 
       Get.snackbar(
-        'Removed', 
+        'Removed',
         'Item removed from cart',
         snackPosition: SnackPosition.BOTTOM,
         duration: const Duration(seconds: 2),
@@ -429,12 +435,13 @@ void disposeSnackbars() {
   }
 
   // Existing methods with local-first approach
-  Future<void> initializeCart({required String? accessToken}) async { // Changed to nullable
+  Future<void> initializeCart({required String? accessToken}) async {
+    // Changed to nullable
     try {
       // Only try to get existing cart from backend if we have access token
       if (accessToken != null && accessToken.isNotEmpty) {
         await getCart();
-        
+
         // If we have a remote cart, use it as the source of truth
         if (_cart.value != null) {
           _localCart.value = _cart.value;
@@ -450,7 +457,7 @@ void disposeSnackbars() {
   Future<void> getCart() async {
     try {
       final cartId = GetStorage().read('current_cart_id');
-      
+
       if (cartId != null) {
         final response = await _apiService.get('orders/carts/$cartId/');
         _cart.value = Cart.fromJson(response);
@@ -461,11 +468,12 @@ void disposeSnackbars() {
     }
   }
 
-  Future<void> clearCart({required String? accessToken}) async { // Changed to nullable
+  Future<void> clearCart({required String? accessToken}) async {
+    // Changed to nullable
     try {
       // Clear both local and remote
       _clearLocalCart();
-      
+
       // Only clear remote cart if we have access token
       if (accessToken != null && accessToken.isNotEmpty) {
         final cartId = GetStorage().read('current_cart_id');
@@ -473,7 +481,7 @@ void disposeSnackbars() {
           await _apiService.delete('orders/carts/$cartId/');
         }
       }
-      
+
       _cart.value = null;
       await GetStorage().remove('current_cart_id');
 

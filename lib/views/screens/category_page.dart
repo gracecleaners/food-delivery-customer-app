@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
+import 'package:food_delivery_customer/controller/cart_controller.dart';
 import 'package:food_delivery_customer/controller/category_controller.dart';
+import 'package:food_delivery_customer/controller/user_controller.dart';
 import 'package:food_delivery_customer/models/menu_item.dart';
 import 'package:food_delivery_customer/views/screens/item_detail.dart';
 import 'package:food_delivery_customer/services/api_service.dart';
@@ -9,9 +11,9 @@ import 'package:get/get.dart';
 class CategoryPage extends StatefulWidget {
   final int categoryId;
   final String categoryName;
-  
+
   const CategoryPage({
-    super.key, 
+    super.key,
     required this.categoryId,
     required this.categoryName,
   });
@@ -24,7 +26,9 @@ class _CategoryPageState extends State<CategoryPage> {
   final TextEditingController _searchController = TextEditingController();
   final CategoryController categoryController = Get.find();
   final ApiService _apiService = Get.find();
-  
+  final UserController _userController = Get.find<UserController>();
+  final CartController _cartController = Get.find<CartController>();
+
   String _searchQuery = '';
   bool _isSearching = false;
   final RxList<MenuItem> _categoryMenuItems = <MenuItem>[].obs;
@@ -43,15 +47,14 @@ class _CategoryPageState extends State<CategoryPage> {
     try {
       _isLoadingMenuItems.value = true;
       print('🔍 Loading menu items for category: ${widget.categoryId}');
-      
+
       // Try the category-specific endpoint first
       try {
-        final response = await _apiService.get(
-          'restaurants/categories/${widget.categoryId}/items/'
-        );
-        
+        final response = await _apiService
+            .get('restaurants/categories/${widget.categoryId}/items/');
+
         List<dynamic> itemsList = [];
-        
+
         if (response is List) {
           itemsList = response;
         } else if (response is Map && response.containsKey('data')) {
@@ -59,27 +62,28 @@ class _CategoryPageState extends State<CategoryPage> {
         } else if (response is Map && response.containsKey('results')) {
           itemsList = response['results'] ?? [];
         }
-        
+
         if (itemsList.isNotEmpty) {
           final menuItems = itemsList
               .map((item) => MenuItem.fromJson(item as Map<String, dynamic>))
               .where((item) => item.isAvailable)
               .toList();
-          
+
           _categoryMenuItems.value = menuItems;
-          print('✅ Loaded ${menuItems.length} menu items from category endpoint');
+          print(
+              '✅ Loaded ${menuItems.length} menu items from category endpoint');
           return;
         }
       } catch (e) {
         print('⚠️ Category-specific endpoint not available: $e');
       }
-      
+
       // Fallback: Fetch all menu items and filter by category
       print('🔄 Fetching all menu items and filtering by category...');
       final response = await _apiService.get('restaurants/items/');
-      
+
       List<dynamic> itemsList = [];
-      
+
       if (response is List) {
         itemsList = response;
       } else if (response is Map && response.containsKey('data')) {
@@ -87,9 +91,9 @@ class _CategoryPageState extends State<CategoryPage> {
       } else if (response is Map && response.containsKey('results')) {
         itemsList = response['results'] ?? [];
       }
-      
+
       print('📦 Total items fetched: ${itemsList.length}');
-      
+
       final menuItems = itemsList
           .map((item) {
             try {
@@ -104,21 +108,22 @@ class _CategoryPageState extends State<CategoryPage> {
             // Filter by category
             final itemCategory = item.category;
             final matchesCategory = itemCategory == widget.categoryId;
-            
+
             // Only show available items
             final isAvailable = item.isAvailable;
-            
+
             if (matchesCategory) {
               print('✅ Found item: ${item.title} (category: $itemCategory)');
             }
-            
+
             return matchesCategory && isAvailable;
           })
           .toList();
-      
+
       _categoryMenuItems.value = menuItems;
-      print('✅ Loaded ${menuItems.length} menu items for category ${widget.categoryId} after filtering');
-      
+      print(
+          '✅ Loaded ${menuItems.length} menu items for category ${widget.categoryId} after filtering');
+
       if (menuItems.isEmpty) {
         print('⚠️ No menu items found for category ${widget.categoryId}');
         print('   This could mean:');
@@ -126,7 +131,6 @@ class _CategoryPageState extends State<CategoryPage> {
         print('   2. All items in this category are unavailable');
         print('   3. The category field name might be different');
       }
-      
     } catch (e, stackTrace) {
       print('❌ Error loading category menu items: $e');
       print('❌ Stack trace: $stackTrace');
@@ -146,7 +150,7 @@ class _CategoryPageState extends State<CategoryPage> {
     if (_searchQuery.isEmpty) {
       return _categoryMenuItems;
     }
-    
+
     return _categoryMenuItems.where((item) {
       final title = item.title.toLowerCase();
       final query = _searchQuery.toLowerCase();
@@ -198,11 +202,11 @@ class _CategoryPageState extends State<CategoryPage> {
             if (_isLoadingMenuItems.value) {
               return _buildMenuItemsLoading();
             }
-            
+
             if (filteredMenuItems.isEmpty) {
               return _buildEmptyState();
             }
-            
+
             return SliverPadding(
               padding: const EdgeInsets.all(16),
               sliver: SliverGrid(
@@ -335,7 +339,7 @@ class _CategoryPageState extends State<CategoryPage> {
                             ),
                     ),
                   ),
-                  
+
                   // Promotion Badge
                   if (menuItem.hasActivePromotions)
                     Positioned(
@@ -363,7 +367,7 @@ class _CategoryPageState extends State<CategoryPage> {
                 ],
               ),
             ),
-            
+
             // Menu Item Info
             Expanded(
               flex: 2,
@@ -384,7 +388,7 @@ class _CategoryPageState extends State<CategoryPage> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    
+
                     // Price and Add Button
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -421,29 +425,55 @@ class _CategoryPageState extends State<CategoryPage> {
                               ),
                           ],
                         ),
-                        
-                        // Add Button
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: TColor.primary,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: TColor.primary.withOpacity(0.3),
-                                spreadRadius: 1,
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+
+                        GestureDetector(
+                          onTap: () async {
+                            if (!_userController.isLoggedIn) {
+                              Get.snackbar('Login Required',
+                                  'Please login to add items to cart',
+                                  snackPosition: SnackPosition.BOTTOM,
+                                  backgroundColor: Colors.orange,
+                                  colorText: Colors.white);
+                              return;
+                            }
+                            try {
+                              await _cartController.addToCart(
+                                  menuItem: menuItem,
+                                  quantity: 1,
+                                  accessToken: _userController.accessToken);
+                              print('Hello');
+                            } catch (e) {
+                              Get.snackbar(
+                                'Error',
+                                'Failed to add item: ${e.toString()}',
+                                snackPosition: SnackPosition.BOTTOM,
+                                backgroundColor: Colors.red,
+                                colorText: Colors.white,
+                              );
+                            }
+                          },
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: TColor.primary,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: TColor.primary.withOpacity(0.3),
+                                  spreadRadius: 1,
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.add,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
+                        )
                       ],
                     ),
                   ],
