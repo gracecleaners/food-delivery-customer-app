@@ -134,7 +134,7 @@ class CartController extends GetxController {
       await _addToLocalCart(menuItem: menuItem, quantity: quantity);
 
       // 2. Add a small delay to ensure smooth UI transition (2 seconds as requested)
-      await Future.delayed(const Duration(seconds: 2));
+      // await Future.delayed(const Duration(seconds: 2));
 
       // 3. THEN: Sync with backend in background if we have access token
       if (accessToken != null && accessToken.isNotEmpty) {
