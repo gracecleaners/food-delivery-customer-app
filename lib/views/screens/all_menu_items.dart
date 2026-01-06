@@ -97,20 +97,21 @@ class _AllMenuItemsPageState extends State<AllMenuItemsPage> {
             expandedHeight: 56, // Minimal height
             automaticallyImplyLeading: false, // No back arrow
             title: Row(
-    children: [
-      // Back Arrow
-      IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
-        onPressed: () {
-          Get.back();
-        },
-      ),
-      const SizedBox(width: 8),
+              children: [
+                // Back Arrow
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
+                  onPressed: () {
+                    
+                    Navigator.of(context).pop();
+                  },
+                ),
+                const SizedBox(width: 8),
 
-      // Search Field Expanded
-      Expanded(child: _buildSearchField()),
-    ],
-  ),
+                // Search Field Expanded
+                Expanded(child: _buildSearchField()),
+              ],
+            ),
             centerTitle: false,
             titleSpacing: 16, // Add some spacing
           ),
