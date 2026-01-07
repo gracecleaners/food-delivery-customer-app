@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:food_delivery_customer/views/auth/email_login.dart';
 import 'package:food_delivery_customer/views/auth/login.dart';
 import 'package:food_delivery_customer/views/screens/google_phone_input.dart';
+import 'package:food_delivery_customer/views/screens/notification_screen.dart';
+import 'package:food_delivery_customer/views/screens/notification_settings.dart';
 import 'package:food_delivery_customer/views/screens/register.dart';
 import 'package:get/get.dart';
 import 'package:food_delivery_customer/views/auth/email_verification_screen.dart';
@@ -45,5 +47,14 @@ GetPage(
     return const Scaffold(body: Center(child: Text('Invalid arguments')));
   },
 ),
+
+ GetPage(
+      name: '/notifications',
+      page: () => const NotificationsScreen(),
+    ),
+    GetPage(
+      name: '/notification-settings',
+      page: () => NotificationSettingsScreen(),
+    ),
   ];
 }

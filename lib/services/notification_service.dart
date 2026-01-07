@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -10,7 +12,7 @@ import 'package:get_storage/get_storage.dart';
 import '../controller/user_controller.dart';
 import 'api_service.dart';
 
-class NotificationService {
+class NotificationService extends GetxService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
@@ -27,15 +29,19 @@ class NotificationService {
   Stream<RemoteMessage> get notificationStream => _notificationStreamController.stream;
 
   bool _initialized = false;
+  String? _currentFcmToken;
+
+  @override
+  void onClose() {
+    _notificationStreamController.close();
+    super.onClose();
+  }
 
   Future<void> initialize() async {
     if (_initialized) return;
 
     try {
-      // Initialize Firebase if not already done
-      if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp();
-      }
+      print('🔄 Initializing Notification Service...');
 
       // Initialize local notifications
       await _initializeLocalNotifications();
@@ -50,67 +56,96 @@ class NotificationService {
       await _configureMessageHandlers();
 
       _initialized = true;
-      print('✅ Notification service initialized');
+      print('✅ Notification service initialized successfully');
     } catch (e) {
       print('❌ Error initializing notification service: $e');
+      rethrow;
     }
   }
 
   Future<void> _initializeLocalNotifications() async {
-    _localNotifications = FlutterLocalNotificationsPlugin();
+  _localNotifications = FlutterLocalNotificationsPlugin();
 
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    final DarwinInitializationSettings initializationSettingsDarwin =
-        DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-      onDidReceiveLocalNotification: (id, title, body, payload) async {
-        // Handle local notification on iOS
-      },
+  final DarwinInitializationSettings initializationSettingsDarwin =
+      DarwinInitializationSettings(
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
+    // onDidReceiveLocalNotification has been removed/renamed in newer versions
+  );
+
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: initializationSettingsDarwin,
+  );
+
+  await _localNotifications.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {
+      print('📱 Notification tapped: ${response.payload}');
+      _handleNotificationTap(response.payload);
+    },
+    // onDidReceiveBackgroundNotificationResponse is no longer needed
+    // as onDidReceiveNotificationResponse handles both cases
+  );
+
+  // Create notification channel for Android
+  if (Platform.isAndroid) {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'fudz_channel_id',
+      'Fudz Notifications',
+      description: 'Fudz app notifications',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
     );
 
-    final InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsDarwin,
-    );
-
-    await _localNotifications.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        _handleNotificationTap(response.payload);
-      },
-    );
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
   }
 
-  Future<void> _requestPermissions() async {
-    if (Platform.isIOS) {
-      await _firebaseMessaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
-    }
+  print('✅ Local notifications initialized');
+}
 
-    if (Platform.isAndroid) {
-      // For Android 13+
-      if (Platform.isAndroid) {
-        final NotificationSettings settings = await _firebaseMessaging.requestPermission(
+  Future<void> _requestPermissions() async {
+    try {
+      if (Platform.isIOS) {
+        final settings = await _firebaseMessaging.requestPermission(
           alert: true,
+          announcement: false,
           badge: true,
-          sound: true,
+          carPlay: false,
+          criticalAlert: false,
           provisional: false,
+          sound: true,
         );
-        
-        if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-          print('✅ Notification permissions granted');
-        } else {
-          print('❌ Notification permissions denied');
-        }
+
+        print('📱 iOS notification permission status: ${settings.authorizationStatus}');
       }
+
+      if (Platform.isAndroid && (Platform.version as int) >= 33) {
+        final settings = await _firebaseMessaging.requestPermission(
+          alert: true,
+          announcement: false,
+          badge: true,
+          carPlay: false,
+          criticalAlert: false,
+          provisional: false,
+          sound: true,
+        );
+
+        print('📱 Android 13+ notification permission status: ${settings.authorizationStatus}');
+      }
+
+      print('✅ Notification permissions requested');
+    } catch (e) {
+      print('⚠️ Error requesting notification permissions: $e');
     }
   }
 
@@ -119,35 +154,43 @@ class NotificationService {
       // Get the FCM token
       final token = await _firebaseMessaging.getToken();
       
-      if (token != null) {
+      if (token != null && token.isNotEmpty) {
+        _currentFcmToken = token;
         _storage.write(fcmTokenKey, token);
-        print('🔑 FCM Token: $token');
+        print('🔑 FCM Token obtained: ${token.substring(0, 20)}...');
         
         // Register token with backend if user is logged in
-        await _registerTokenWithBackend(token);
+        await registerDevice();
+      } else {
+        print('⚠️ FCM token is null or empty');
       }
     } catch (e) {
       print('❌ Error getting FCM token: $e');
     }
   }
 
-  Future<void> _registerTokenWithBackend(String token) async {
+  Future<void> registerDevice() async {
     try {
       final userController = Get.find<UserController>();
       if (!userController.isLoggedIn) {
-        print('⚠️ User not logged in, skipping token registration');
+        print('⚠️ User not logged in, skipping device registration');
+        return;
+      }
+
+      if (_currentFcmToken == null || _currentFcmToken!.isEmpty) {
+        print('⚠️ No FCM token available for registration');
         return;
       }
 
       final apiService = Get.find<ApiService>();
       
-      await apiService.post('users/auth/device/register/', {
-        'registration_id': token,
+      final response = await apiService.post('users/auth/device/register/', {
+        'registration_id': _currentFcmToken,
         'type': Platform.isAndroid ? 'android' : 'ios',
-        'name': '${Platform.operatingSystem} device',
+        'name': '${Platform.operatingSystem} device - ${DateTime.now()}',
       });
 
-      print('✅ FCM token registered with backend');
+      print('✅ FCM token registered with backend: ${response['success']}');
     } catch (e) {
       print('❌ Error registering FCM token: $e');
     }
@@ -160,42 +203,58 @@ class NotificationService {
       _handleForegroundMessage(message);
     });
 
-    // Handle messages when app is in background
+    // Handle messages when app is in background (but not terminated)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       print('📱 Background message tapped: ${message.notification?.title}');
-      _handleMessage(message);
+      _handleMessage(message, fromBackground: true);
     });
 
-    // Handle initial message when app is terminated
+    // Handle initial message when app is terminated and opened via notification
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
-      print('📱 Initial message: ${initialMessage.notification?.title}');
-      _handleMessage(initialMessage);
+      print('📱 Initial message from terminated state: ${initialMessage.notification?.title}');
+      _handleMessage(initialMessage, fromTerminated: true);
     }
 
     // Handle token refresh
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-      print('🔄 FCM Token refreshed: $newToken');
+      print('🔄 FCM Token refreshed: ${newToken.substring(0, 20)}...');
+      _currentFcmToken = newToken;
       _storage.write(fcmTokenKey, newToken);
-      await _registerTokenWithBackend(newToken);
+      await registerDevice();
     });
+
+    // Setup foreground notification settings for iOS
+    if (Platform.isIOS) {
+      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    }
+
+    print('✅ Message handlers configured');
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
-    // Add to stream
+    // Add to stream for UI updates
     _notificationStreamController.add(message);
     
     // Show local notification
     _showLocalNotification(message);
+    
+    // Handle any immediate actions
+    _handleNotificationData(message.data);
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
-    final notification = message.notification;
-    final android = message.notification?.android;
-    final apple = message.notification?.apple;
-
-    if (notification != null) {
-      final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    try {
+      final notification = message.notification;
+      
+      if (notification == null) {
+        print('⚠️ No notification data in message');
+        return;
+      }
 
       const AndroidNotificationDetails androidPlatformChannelSpecifics =
           AndroidNotificationDetails(
@@ -205,89 +264,136 @@ class NotificationService {
         importance: Importance.max,
         priority: Priority.high,
         ticker: 'ticker',
+        playSound: true,
+        enableVibration: true,
+        showWhen: true,
+        autoCancel: true,
       );
 
       const DarwinNotificationDetails iosPlatformChannelSpecifics =
-          DarwinNotificationDetails();
+          DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
 
       final NotificationDetails platformChannelSpecifics = NotificationDetails(
         android: androidPlatformChannelSpecifics,
         iOS: iosPlatformChannelSpecifics,
       );
 
-      await flutterLocalNotificationsPlugin.show(
-        0,
-        notification.title,
-        notification.body,
+      await _localNotifications.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        notification.title ?? 'Fudz Notification',
+        notification.body ?? 'You have a new notification',
         platformChannelSpecifics,
         payload: message.data.toString(),
       );
+
+      print('📱 Local notification shown: ${notification.title}');
+    } catch (e) {
+      print('❌ Error showing local notification: $e');
     }
   }
 
-  void _handleMessage(RemoteMessage message) {
+  void _handleMessage(RemoteMessage message, {bool fromBackground = false, bool fromTerminated = false}) {
     // Add to stream
     _notificationStreamController.add(message);
     
-    // Handle navigation based on message data
-    _handleNotificationTap(message.data.toString());
+    // Handle notification data
+    _handleNotificationData(message.data, fromBackground: fromBackground);
+  }
+
+  void _handleNotificationData(Map<String, dynamic> data, {bool fromBackground = false}) {
+    try {
+      print('📱 Handling notification data: $data');
+      
+      final type = data['type'] ?? data['notification_type'];
+      final orderId = data['order_id'];
+      final restaurantId = data['restaurant_id'];
+      final promoId = data['promo_id'];
+
+      // Navigate based on notification type
+      if (fromBackground || Get.currentRoute != '/home') {
+        switch (type) {
+          case 'order_approved':
+          case 'order_status':
+            if (orderId != null) {
+              Get.toNamed('/order-details', arguments: {'orderId': orderId});
+            }
+            break;
+            
+          case 'restaurant_update':
+            if (restaurantId != null) {
+              Get.toNamed('/restaurant-details', arguments: {'restaurantId': restaurantId});
+            }
+            break;
+            
+          case 'promotion':
+            if (promoId != null) {
+              Get.toNamed('/promotions', arguments: {'promoId': promoId});
+            }
+            break;
+            
+          case 'general':
+            Get.toNamed('/notifications');
+            break;
+            
+          default:
+            Get.toNamed('/home');
+        }
+      }
+    } catch (e) {
+      print('❌ Error handling notification data: $e');
+    }
   }
 
   void _handleNotificationTap(String? payload) {
     try {
-      if (payload == null) return;
+      if (payload == null || payload.isEmpty) return;
 
-      // Parse the data
-      final data = Uri.splitQueryString(payload.replaceAll('{', '').replaceAll('}', ''));
+      print('📱 Notification tapped with payload: $payload');
       
-      // Handle different notification types
-      final type = data['type'];
+      // Parse the data string (format: {key1: value1, key2: value2})
+      final cleanedPayload = payload
+          .replaceAll('{', '')
+          .replaceAll('}', '')
+          .replaceAll(' ', '');
       
-      switch (type) {
-        case 'order_approved':
-          final orderId = data['order_id'];
-          Get.toNamed('/order-details', arguments: {'orderId': orderId});
-          break;
-          
-        case 'order_status':
-          final orderId = data['order_id'];
-          Get.toNamed('/order-details', arguments: {'orderId': orderId});
-          break;
-          
-        case 'promotion':
-          final promoId = data['promo_id'];
-          Get.toNamed('/promotions', arguments: {'promoId': promoId});
-          break;
-          
-        case 'general':
-          Get.toNamed('/notifications');
-          break;
-          
-        default:
-          Get.toNamed('/home');
+      final pairs = cleanedPayload.split(',');
+      final data = <String, dynamic>{};
+      
+      for (final pair in pairs) {
+        final keyValue = pair.split(':');
+        if (keyValue.length == 2) {
+          data[keyValue[0]] = keyValue[1];
+        }
       }
+      
+      _handleNotificationData(data, fromBackground: true);
     } catch (e) {
-      print('❌ Error handling notification tap: $e');
+      print('❌ Error parsing notification payload: $e');
     }
   }
 
-  // Unregister device when user logs out
-  Future<void> unregisterDevice() async {
-    try {
-      final token = _storage.read<String>(fcmTokenKey);
-      if (token != null) {
-        final apiService = Get.find<ApiService>();
-        await apiService.delete('users/auth/device/unregister/', {
-          'registration_id': token,
-        });
-        print('✅ Device unregistered from backend');
-      }
-      
-      _storage.remove(fcmTokenKey);
-    } catch (e) {
-      print('❌ Error unregistering device: $e');
+ // Unregister device when user logs out
+Future<void> unregisterDevice() async {
+  try {
+    final token = _storage.read<String>(fcmTokenKey);
+    if (token != null && token.isNotEmpty) {
+      final apiService = Get.find<ApiService>();
+      await apiService.delete('users/auth/device/unregister/', data: {
+        'registration_id': token,
+      });
+      print('✅ Device unregistered from backend');
     }
+    
+    _storage.remove(fcmTokenKey);
+    _currentFcmToken = null;
+  } catch (e) {
+    print('❌ Error unregistering device: $e');
   }
+}
 
   // Check if notifications are enabled
   bool areNotificationsEnabled() {
@@ -300,13 +406,65 @@ class NotificationService {
     
     if (!enabled) {
       await unregisterDevice();
+      await _firebaseMessaging.deleteToken();
+      print('🔕 Notifications disabled');
     } else {
       await _getFcmToken();
+      print('🔔 Notifications enabled');
     }
   }
 
-  // Dispose resources
-  void dispose() {
-    _notificationStreamController.close();
+  // Get current FCM token
+  String? getFcmToken() {
+    return _currentFcmToken ?? _storage.read<String>(fcmTokenKey);
+  }
+
+  // Clear all notifications
+  Future<void> clearAllNotifications() async {
+    await _localNotifications.cancelAll();
+    print('🗑️ All notifications cleared');
+  }
+
+  // Test notification sending
+  Future<void> sendTestNotification() async {
+    try {
+      final apiService = Get.find<ApiService>();
+      final userController = Get.find<UserController>();
+      
+      if (!userController.isLoggedIn) {
+        Get.snackbar(
+          'Error',
+          'Please log in to send test notifications',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      await apiService.post('users/auth/notification/test/', {
+        'title': 'Test Notification',
+        'message': 'This is a test notification from the app',
+        'data': {
+          'type': 'test',
+          'test_id': '123',
+          'timestamp': DateTime.now().toIso8601String(),
+        }
+      });
+      
+      Get.snackbar(
+        'Success',
+        'Test notification sent',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to send test notification: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
   }
 }

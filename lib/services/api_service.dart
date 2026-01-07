@@ -436,12 +436,28 @@ Future<dynamic> patch(String endpoint, dynamic data) async {
 }
 
 // DELETE method
-Future<dynamic> delete(String endpoint) async {
+// DELETE method - UPDATED to accept data
+Future<dynamic> delete(String endpoint, {Map<String, dynamic>? data}) async {
   return await _sendRequest(() async {
-    return await client.delete(
-      Uri.parse('$baseUrl/$endpoint'),
-      headers: await getHeaders(),
-    ).timeout(const Duration(seconds: 30));
+    print('API DELETE: $baseUrl/$endpoint');
+    
+    if (data != null) {
+      // For DELETE with body, you need to use a Request
+      final headers = await getHeaders();
+      headers['Content-Type'] = 'application/json';
+      
+      final request = http.Request('DELETE', Uri.parse('$baseUrl/$endpoint'))
+        ..headers.addAll(headers)
+        ..body = json.encode(data);
+      
+      final streamedResponse = await client.send(request);
+      return http.Response.fromStream(streamedResponse);
+    } else {
+      return await client.delete(
+        Uri.parse('$baseUrl/$endpoint'),
+        headers: await getHeaders(),
+      ).timeout(const Duration(seconds: 30));
+    }
   });
 }
 

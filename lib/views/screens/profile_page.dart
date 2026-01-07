@@ -1,6 +1,7 @@
 // lib/views/screens/profile_page.dart
 import 'package:flutter/material.dart';
 import 'package:food_delivery_customer/models/user.dart';
+import 'package:food_delivery_customer/services/api_service.dart';
 import 'package:food_delivery_customer/views/screens/edit_profile.dart';
 import 'package:get/get.dart';
 import 'package:food_delivery_customer/constants/colors.dart';
@@ -45,7 +46,7 @@ class ProfilePage extends StatelessWidget {
 
                     // Logout Button
                     if (isLoggedIn) _buildLogoutButton(userController),
-                    
+
                     // Show login prompt if not logged in
                     if (!isLoggedIn) _buildLoginPrompt(),
                   ],
@@ -170,8 +171,8 @@ class ProfilePage extends StatelessWidget {
                 const SizedBox(height: 8),
                 if (isLoggedIn)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
@@ -252,9 +253,7 @@ class ProfilePage extends StatelessWidget {
           _buildInfoRow(
             'Full Name',
             Text(
-              user?.fullName.isNotEmpty == true
-                  ? user!.fullName
-                  : 'Not set',
+              user?.fullName.isNotEmpty == true ? user!.fullName : 'Not set',
               style: TextStyle(
                 fontSize: 16,
                 color: user?.fullName.isNotEmpty == true
@@ -294,6 +293,32 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
             Icons.alternate_email,
+          ),
+          ListTile(
+            leading: const Icon(Icons.notifications),
+            title: const Text('Test Notification'),
+            onTap: () async {
+              try {
+                final apiService = Get.find<ApiService>();
+                await apiService.post('users/auth/notification/test/', {
+                  'title': 'Test Notification',
+                  'message': 'This is a test notification from the app',
+                  'data': {'type': 'test', 'test_id': '123'}
+                });
+
+                Get.snackbar(
+                  'Success',
+                  'Test notification sent',
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              } catch (e) {
+                Get.snackbar(
+                  'Error',
+                  'Failed to send test notification',
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              }
+            },
           ),
         ],
       ),
@@ -358,9 +383,8 @@ class ProfilePage extends StatelessWidget {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: user?.isVerified == true
-                        ? Colors.green
-                        : Colors.orange,
+                    color:
+                        user?.isVerified == true ? Colors.green : Colors.orange,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -371,9 +395,8 @@ class ProfilePage extends StatelessWidget {
                       : 'Pending Verification',
                   style: TextStyle(
                     fontSize: 16,
-                    color: user?.isVerified == true
-                        ? Colors.green
-                        : Colors.orange,
+                    color:
+                        user?.isVerified == true ? Colors.green : Colors.orange,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -608,8 +631,18 @@ class ProfilePage extends StatelessWidget {
 
   String _getMonthName(int month) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     return months[month - 1];
   }
